@@ -338,3 +338,113 @@ class ProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+
+from django.db.models import Count, Q
+
+class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        is_admin = user.is_superuser or (
+            hasattr(user, "employee") and user.employee.role == "ADMIN"
+        )
+
+        if is_admin:
+            return Response(self._admin_payload())
+
+        if not hasattr(user, "employee"):
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(self._employee_payload(user.employee))
+
+    def _admin_payload(self):
+        today = timezone.localdate()
+
+        employees = Employee.objects.select_related("department", "designation")
+        total_employees = employees.count()
+        active_employees = employees.filter(status="ACTIVE").count()
+
+        dept_headcount = list(
+            employees.values("department__name")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+
+        present_today = Attendance.objects.filter(date=today, status="PRESENT").count()
+        absent_today = max(active_employees - present_today, 0)
+
+        tasks = Task.objects.all()
+        pending_tasks = tasks.filter(status__in=["TODO", "IN_PROGRESS"]).count()
+        completed_tasks = tasks.filter(status="COMPLETED").count()
+
+        tasks_by_assignee = list(
+            tasks.values(
+                "assigned_to__id", "assigned_to__first_name", "assigned_to__last_name"
+            )
+            .annotate(
+                pending=Count("id", filter=Q(status="TODO")),
+                in_progress=Count("id", filter=Q(status="IN_PROGRESS")),
+                completed=Count("id", filter=Q(status="COMPLETED")),
+            )
+            .order_by("-pending")[:8]
+        )
+
+        recent_employees = list(
+            employees.order_by("-created_at")[:5].values(
+                "id", "employee_code", "first_name", "last_name",
+                "department__name", "created_at",
+            )
+        )
+
+        recent_tasks = list(
+            tasks.select_related("assigned_to").order_by("-created_at")[:5].values(
+                "id", "task_code", "title", "status", "priority",
+                "assigned_to__first_name", "assigned_to__last_name", "due_date",
+            )
+        )
+
+        return {
+            "role": "ADMIN",
+            "stats": {
+                "total_employees": total_employees,
+                "active_employees": active_employees,
+                "departments": Department.objects.filter(is_active=True).count(),
+                "present_today": present_today,
+                "absent_today": absent_today,
+                "pending_tasks": pending_tasks,
+                "completed_tasks": completed_tasks,
+            },
+            "department_headcount": dept_headcount,
+            "tasks_by_assignee": tasks_by_assignee,
+            "recent_employees": recent_employees,
+            "recent_tasks": recent_tasks,
+        }
+
+    def _employee_payload(self, employee):
+        today = timezone.localdate()
+
+        my_tasks = Task.objects.filter(assigned_to=employee)
+        attendance = Attendance.objects.filter(employee=employee, date=today).first()
+
+        return {
+            "role": "EMPLOYEE",
+            "stats": {
+                "my_tasks": my_tasks.count(),
+                "pending_tasks": my_tasks.filter(status__in=["TODO", "IN_PROGRESS"]).count(),
+                "completed_tasks": my_tasks.filter(status="COMPLETED").count(),
+                "attendance_status": attendance.status if attendance else None,
+                "check_in": attendance.check_in if attendance else None,
+                "check_out": attendance.check_out if attendance else None,
+            },
+            "recent_tasks": list(
+                my_tasks.order_by("-created_at")[:5].values(
+                    "id", "task_code", "title", "status", "priority", "due_date"
+                )
+            ),
+        }

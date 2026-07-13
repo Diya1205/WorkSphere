@@ -9,6 +9,7 @@ from .views import (
     EmployeeViewSet,
     ProfileView,
     TaskViewSet,
+    DashboardView,
 )
 
 router = DefaultRouter()
@@ -29,5 +30,5 @@ urlpatterns = [
     path("auth/", AuthView.as_view(), name="auth"),
     path("", include(router.urls)),
     path("profile/", ProfileView.as_view(), name="profile"),  
-
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
 ]
