@@ -177,7 +177,13 @@ export function AppLayout() {
       </aside>
 
       <div className={cn("flex min-w-0 flex-1 flex-col transition-[padding] duration-200", collapsed ? "lg:pl-16" : "lg:pl-64")}>
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur lg:px-6">
+          <header
+            className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-surface/90 px-4 pt-4 backdrop-blur lg:px-6 lg:pt-0"
+            style={{
+              paddingTop: "max(env(safe-area-inset-top), 16px)",
+              minHeight: "80px",
+            }}
+          >
           <button onClick={() => setMobileOpen((v) => !v)} className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-accent lg:hidden" aria-label="Open menu">
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

@@ -297,12 +297,19 @@ function TaskCard({
       ? `${assignee.first_name} ${assignee.last_name}`
       : "Unassigned"
     : task.assigned_by_name ?? "—";
+    console.log("TaskCard Render:", task);
 
   return (
     <div
-      onClick={onOpen}
-      className="group cursor-pointer rounded-lg border border-border bg-surface p-3.5 shadow-[var(--shadow-resting)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)]"
-    >
+  onClick={onOpen}
+  style={{
+    background: "#ffffff",
+    border: "1px solid #d1d5db",
+    padding: "14px",
+    borderRadius: "12px",
+    boxShadow: "0 2px 8px rgba(0,0,0,.08)",
+  }}
+>
       <div className="flex items-start justify-between gap-2">
         <span className="font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {task.task_code ?? `TASK-${task.id}`}
@@ -317,14 +324,27 @@ function TaskCard({
         </span>
       </div>
 
-      <h4 className="mt-1.5 text-sm font-semibold leading-snug text-foreground">
+      <h4
+  style={{
+    color: "#111827",
+    fontSize: "15px",
+    fontWeight: 600,
+    marginTop: "8px",
+  }}
+>
         {task.title}
       </h4>
 
       <div className="mt-3 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Avatar name={personName} size="xs" />
-          <span className="max-w-[110px] truncate text-[11px] font-medium text-foreground">
+          <span
+  style={{
+    color: "#111827",
+    fontSize: "12px",
+    fontWeight: 500,
+  }}
+>
             {personName}
           </span>
         </div>
