@@ -199,12 +199,12 @@ function AttendancePage() {
         breadcrumbs={[{ label: "Home" }, { label: "Time" }, { label: "Attendance" }]}
       />
 
-      <div className="mx-auto max-w-[1440px] space-y-6 px-6 py-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px] space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 lg:px-8">
 
         {isEmployee ? (
 
-          <div className="rounded-3xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 p-10 text-white shadow-xl">
-            <div className="grid grid-cols-[320px_1fr_220px] items-center gap-10">
+          <div className="rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 p-5 text-white shadow-xl sm:rounded-3xl sm:p-8 lg:p-10">
+            <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[320px_1fr_220px] lg:items-center lg:gap-10">
 
               {/* Left */}
               <div>
@@ -212,14 +212,14 @@ function AttendancePage() {
                   Today · {today}
                 </div>
 
-                <div className="mt-3 flex items-center gap-4">
-                  <div className="text-5xl font-bold tabular">
+                <div className="mt-3 flex flex-wrap items-center gap-3 sm:gap-4">
+                  <div className="text-3xl font-bold tabular sm:text-4xl lg:text-5xl">
                     {checkInTime}
                   </div>
 
                   <div
                     className={cn(
-                      "inline-flex h-9 items-center rounded-full px-5 text-sm font-semibold shadow-sm",
+                      "inline-flex h-8 items-center rounded-full px-4 text-xs font-semibold shadow-sm sm:h-9 sm:px-5 sm:text-sm",
                       attendanceStatus === "PRESENT"
                         ? "bg-green-600 text-white"
                         : "bg-red-600 text-white"
@@ -230,7 +230,7 @@ function AttendancePage() {
                 </div>
 
                 <div className="mt-4 flex items-center gap-2 text-sm text-white/90">
-                  <MapPin className="h-4 w-4" />
+                  <MapPin className="h-4 w-4 shrink-0" />
                   {todayRow?.location ?? "Ahmedabad"}
                 </div>
 
@@ -240,34 +240,34 @@ function AttendancePage() {
               </div>
 
               {/* Center */}
-              <div className="flex justify-center gap-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:flex lg:justify-center lg:gap-6">
 
-                <div className="rounded-xl bg-white/10 px-6 py-4 text-center min-w-[140px]">
-                  <div className="text-xs uppercase opacity-70">
+                <div className="rounded-xl bg-white/10 px-2 py-3 text-center sm:px-4 sm:py-4 lg:min-w-[140px] lg:px-6">
+                  <div className="text-[10px] uppercase opacity-70 sm:text-xs">
                     Check In
                   </div>
 
-                  <div className="mt-2 text-2xl font-bold">
+                  <div className="mt-1 text-base font-bold sm:mt-2 sm:text-xl lg:text-2xl">
                     {checkInTime}
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-white/10 px-6 py-4 text-center min-w-[140px]">
-                  <div className="text-xs uppercase opacity-70">
+                <div className="rounded-xl bg-white/10 px-2 py-3 text-center sm:px-4 sm:py-4 lg:min-w-[140px] lg:px-6">
+                  <div className="text-[10px] uppercase opacity-70 sm:text-xs">
                     Check Out
                   </div>
 
-                  <div className="mt-2 text-2xl font-bold">
+                  <div className="mt-1 text-base font-bold sm:mt-2 sm:text-xl lg:text-2xl">
                     {checkOutTime}
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-white/10 px-6 py-4 text-center min-w-[160px]">
-                  <div className="text-xs uppercase opacity-70">
+                <div className="rounded-xl bg-white/10 px-2 py-3 text-center sm:px-4 sm:py-4 lg:min-w-[160px] lg:px-6">
+                  <div className="text-[10px] uppercase opacity-70 sm:text-xs">
                     Working Hours
                   </div>
 
-                  <div className="mt-2 text-2xl font-bold">
+                  <div className="mt-1 text-base font-bold sm:mt-2 sm:text-xl lg:text-2xl">
                     {workingHours}
                   </div>
                 </div>
@@ -275,13 +275,13 @@ function AttendancePage() {
               </div>
 
               {/* Right */}
-              <div className="flex justify-end">
+              <div className="flex justify-stretch lg:justify-end">
 
                 {todayRow?.check_out ? (
 
                   <button
                     disabled
-                    className="inline-flex h-12 items-center gap-2 rounded-xl bg-white/70 px-6 font-semibold text-primary cursor-not-allowed"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white/70 px-6 font-semibold text-primary cursor-not-allowed sm:h-12 lg:w-auto"
                   >
                     ✓ Day Completed
                   </button>
@@ -291,7 +291,7 @@ function AttendancePage() {
                   <button
                     onClick={() => checkIn.mutate()}
                     disabled={checkIn.isPending}
-                    className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-6 font-semibold text-primary shadow"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 font-semibold text-primary shadow sm:h-12 lg:w-auto"
                   >
                     <Play className="h-4 w-4" />
                     {checkIn.isPending ? "Checking In..." : "Check In"}
@@ -302,7 +302,7 @@ function AttendancePage() {
                   <button
                     onClick={() => checkOut.mutate()}
                     disabled={checkOut.isPending}
-                    className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-6 font-semibold text-primary shadow"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 font-semibold text-primary shadow sm:h-12 lg:w-auto"
                   >
                     <StopIcon className="h-4 w-4" />
                     {checkOut.isPending ? "Checking Out..." : "Check Out"}
@@ -316,24 +316,24 @@ function AttendancePage() {
           </div>
         ) : (
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
 
-            <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
               <div className="text-xs text-muted-foreground">
                 Present Today
               </div>
 
-              <div className="mt-2 text-3xl font-semibold text-success">
+              <div className="mt-2 text-2xl font-semibold text-success sm:text-3xl">
                 {todayStats.present}
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
               <div className="text-xs text-muted-foreground">
                 Absent Today
               </div>
 
-              <div className="mt-2 text-3xl font-semibold text-danger">
+              <div className="mt-2 text-2xl font-semibold text-danger sm:text-3xl">
                 {todayStats.absent}
               </div>
             </div>
@@ -352,12 +352,12 @@ function AttendancePage() {
               <table className="w-full border-separate border-spacing-0 text-xs">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 border-b border-border bg-surface px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">Employee</th>
+                    <th className="sticky left-0 z-10 whitespace-nowrap border-b border-border bg-surface px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:px-4">Employee</th>
                     {days.map((d) => (
                       <th key={d} className="border-b border-border px-1 py-3 text-center font-semibold tabular text-muted-foreground">{d}</th>
                     ))}
-                    <th className="border-b border-border px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">P</th>
-                    <th className="border-b border-border px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">A</th>
+                    <th className="whitespace-nowrap border-b border-border px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">P</th>
+                    <th className="whitespace-nowrap border-b border-border px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">A</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -382,7 +382,7 @@ function AttendancePage() {
                     ).length;
                     return (
                       <tr key={uid} className="hover:bg-accent/40">
-                        <td className="sticky left-0 z-10 border-b border-border bg-surface px-4 py-2">
+                        <td className="sticky left-0 z-10 border-b border-border bg-surface px-3 py-2 sm:px-4">
                           <div className="flex items-center gap-2">
                             <Avatar name={p?.full_name ?? "User"} size="xs" />
                             <div className="min-w-0">
