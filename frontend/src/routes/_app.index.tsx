@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_app/")({
   component: Dashboard,
   head: () => ({
     meta: [
-      { title: "Dashboard · Northwind IT" },
+      { title: "Dashboard · TirthInfotech" },
       { name: "description", content: "HR operations at a glance — headcount, attendance, payroll, approvals and org health." },
     ],
   }),
@@ -58,7 +58,7 @@ function Dashboard() {
     <>
       <PageHeader
         title="Good morning, Ananya"
-        description="Here's what's happening across Northwind today · Friday, 3 July 2026"
+        description="Here's what's happening across TirthInfotech today · Friday, 3 July 2026"
         breadcrumbs={[{ label: "Home" }, { label: "Dashboard" }]}
         actions={
           <>

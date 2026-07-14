@@ -29,7 +29,7 @@ import { getEmployees } from "@/services/employeeService";
 
 export const Route = createFileRoute("/_app/live/tasks")({
   component: LiveTasksPage,
-  head: () => ({ meta: [{ title: "Tasks · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Tasks · TirthInfotech" }] }),
 });
 
 /* -------------------------------------------------------------------------- */

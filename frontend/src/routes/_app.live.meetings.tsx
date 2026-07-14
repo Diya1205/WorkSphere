@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/live/meetings")({
   component: LiveMeetingsPage,
-  head: () => ({ meta: [{ title: "Meetings · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Meetings · TirthInfotech" }] }),
 });
 
 const sb = supabase as any;

@@ -11,7 +11,7 @@ import { currency, compactCurrency } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/_app/payroll")({
   component: PayrollPage,
-  head: () => ({ meta: [{ title: "Payroll · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Payroll · TirthInfotech" }] }),
 });
 
 const sb = supabase as any;

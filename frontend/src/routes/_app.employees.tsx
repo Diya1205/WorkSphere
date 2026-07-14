@@ -12,8 +12,8 @@ export const Route = createFileRoute("/_app/employees")({
   component: EmployeesPage,
   head: () => ({
     meta: [
-      { title: "Employees · Northwind IT" },
-      { name: "description", content: "Directory of all Northwind employees across departments and locations." },
+      { title: "Employees · TirthInfotech" },
+      { name: "description", content: "Directory of all TirthInfotech employees across departments and locations." },
     ],
   }),
 });

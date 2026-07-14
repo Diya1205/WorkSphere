@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_app/leave")({
   component: LeavePage,
   head: () => ({
     meta: [
-      { title: "Leave · Northwind IT" },
+      { title: "Leave · TirthInfotech" },
       { name: "description", content: "Apply for leave, review pending approvals, and track team balances." },
     ],
   }),

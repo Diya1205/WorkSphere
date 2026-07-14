@@ -8,7 +8,7 @@ import { Avatar } from "@/components/hrms/Avatar";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
-  head: () => ({ meta: [{ title: "Dashboard · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Dashboard · TirthInfotech" }] }),
 });
 
 type AdminDashboard = {

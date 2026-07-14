@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import api from "@/services/api";
 export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
-  head: () => ({ meta: [{ title: "Attendance · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Attendance · TirthInfotech" }] }),
 });
 
 

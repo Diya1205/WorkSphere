@@ -75,9 +75,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Northwind IT · People Platform" },
+      { title: "TirthInfotech · People Platform" },
       { name: "description", content: "Enterprise HRMS for modern IT organizations — attendance, leave, payroll, performance and recruitment in one calm workspace." },
-      { property: "og:title", content: "Northwind IT · People Platform" },
+      { property: "og:title", content: "TirthInfotech · People Platform" },
       { property: "og:description", content: "Enterprise HRMS for modern IT organizations — attendance, leave, payroll, performance and recruitment in one calm workspace." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

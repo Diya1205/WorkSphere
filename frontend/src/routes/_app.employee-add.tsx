@@ -11,8 +11,8 @@ export const Route = createFileRoute("/_app/employee-add")({
     component: AddEmployeePage,
     head: () => ({
         meta: [
-            { title: "Add Employee · Northwind IT" },
-            { name: "description", content: "Create a new employee profile for Northwind IT." },
+            { title: "Add Employee · TirthInfotech" },
+            { name: "description", content: "Create a new employee profile for TirthInfotech." },
         ],
     }),
 });

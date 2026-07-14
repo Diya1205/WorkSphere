@@ -28,7 +28,7 @@ import { getProfile, updateProfile, type ProfileData } from "@/services/profile"
 
 export const Route = createFileRoute("/_app/profile")({
   component: MyProfilePage,
-  head: () => ({ meta: [{ title: "My Profile · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "My Profile · TirthInfotech" }] }),
 });
 
 const GENDER_LABELS: Record<string, string> = {

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/recruitment")({
   component: RecruitmentPage,
-  head: () => ({ meta: [{ title: "Recruitment · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Recruitment · TirthInfotech" }] }),
 });
 
 const stages: { id: Candidate["stage"]; label: string; accent: string }[] = [

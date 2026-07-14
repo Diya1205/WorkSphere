@@ -5,7 +5,7 @@ import { Shield, Bell, Building, Palette, Globe, Key, Save } from "lucide-react"
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
-  head: () => ({ meta: [{ title: "Settings · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Settings · TirthInfotech" }] }),
 });
 
 const sections = [

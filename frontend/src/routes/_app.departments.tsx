@@ -5,7 +5,7 @@ import { Users, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/_app/departments")({
   component: DepartmentsPage,
-  head: () => ({ meta: [{ title: "Departments · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Departments · TirthInfotech" }] }),
 });
 
 function DepartmentsPage() {

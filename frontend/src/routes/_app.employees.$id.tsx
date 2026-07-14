@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_app/employees/$id")({
     <div className="p-12 text-center text-sm text-muted-foreground">Employee not found.</div>
   ),
   head: ({ loaderData }) => ({
-    meta: loaderData ? [{ title: `${loaderData.name} · Northwind IT` }] : [],
+    meta: loaderData ? [{ title: `${loaderData.name} · TirthInfotech` }] : [],
   }),
 });
 
@@ -180,7 +180,7 @@ function EmployeeDetail() {
                     { date: "2026-04-01", title: "Promoted to " + emp.designation, meta: "Compensation revised to " + compactCurrency(emp.ctc) },
                     { date: "2024-04-01", title: "Merit increase", meta: "+12% base + 8% variable" },
                     { date: "2022-10-15", title: "Team change", meta: "Moved to " + emp.department },
-                    { date: emp.joinDate, title: "Joined Northwind IT", meta: "Hired as " + emp.designation.replace("Senior ", "").replace("Staff ", "") },
+                    { date: emp.joinDate, title: "Joined TirthInfotech", meta: "Hired as " + emp.designation.replace("Senior ", "").replace("Staff ", "") },
                   ].map((item, i) => (
                     <li key={i} className="flex gap-4">
                       <div className="flex flex-col items-center">

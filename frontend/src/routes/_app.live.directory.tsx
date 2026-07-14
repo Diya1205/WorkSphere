@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/live/directory")({
   component: DirectoryPage,
-  head: () => ({ meta: [{ title: "Directory · Northwind IT" }] }),
+  head: () => ({ meta: [{ title: "Directory · TirthInfotech" }] }),
 });
 
 const sb = supabase as any;
