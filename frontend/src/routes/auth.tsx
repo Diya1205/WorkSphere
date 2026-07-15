@@ -2,7 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import api from "@/services/api";
-
+import { authStorage } from "@/lib/auth-storage";
+import { useEffect } from "react";
 export const Route = createFileRoute("/auth")({
   ssr: false,
   component: AuthPage,
@@ -13,7 +14,15 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-
+  useEffect(() => {
+    if (authStorage.getItem("access")) {
+      navigate({
+        to: "/dashboard",
+        replace: true,
+      });
+    }
+  }, [navigate]);
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,9 +37,9 @@ function AuthPage() {
         password,
       });
 
-      sessionStorage.setItem("access", response.data.access);
-      sessionStorage.setItem("refresh", response.data.refresh);
-      sessionStorage.setItem("user", JSON.stringify(response.data.user));
+      authStorage.setItem("access", response.data.access);
+      authStorage.setItem("refresh", response.data.refresh);
+      authStorage.setItem("user", JSON.stringify(response.data.user));
       toast.success("Login successful");
 
       navigate({

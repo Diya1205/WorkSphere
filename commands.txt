@@ -20,6 +20,11 @@ sudo systemctl restart worksphere-frontend
 sudo systemctl restart nginx
 
 
+local : git commands:
+D:\WorkSphere>git status
+git add .
+git commit -m "Redesign live task page for Android WebView testing"
+git push origin main
 
 
 
