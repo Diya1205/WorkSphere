@@ -521,15 +521,11 @@ function TaskDetailsModal({
 
   return (
     <div className="task-modal-overlay" onClick={onClose}>
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={submit}
-        className="task-modal-panel"
-      >
+      <div className="task-modal-panel" onClick={(e) => e.stopPropagation()}>
         {/* Drag handle — visible on mobile only (hidden >=768px via CSS) */}
         <div className="task-modal-handle" />
 
-        {/* Header — fixed, never scrolls */}
+        {/* Header — fixed, outside the form, never scrolls, never gets focus-scrolled */}
         <div className="task-modal-header">
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
@@ -566,6 +562,7 @@ function TaskDetailsModal({
             {isAdmin ? (
               <input
                 required
+                form="task-details-form"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
@@ -611,8 +608,12 @@ function TaskDetailsModal({
           </div>
         </div>
 
-        {/* Body — the only scrollable region */}
-        <div className="task-modal-body">
+        {/* Form — ONLY wraps the scrollable body. This is the ONLY scroll region. */}
+        <form
+          id="task-details-form"
+          onSubmit={submit}
+          className="task-modal-body"
+        >
           {/* General Information */}
           <div style={{ marginBottom: "18px" }}>
             <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
@@ -870,9 +871,9 @@ function TaskDetailsModal({
               {task?.updated_at && <span>Updated {formatDate(task.updated_at)}</span>}
             </div>
           )}
-        </div>
+        </form>
 
-        {/* Footer — fixed, never scrolls */}
+        {/* Footer — fixed, outside the form; Save submits via form="task-details-form" */}
         <div className="task-modal-footer">
           <button
             type="button"
@@ -883,6 +884,7 @@ function TaskDetailsModal({
           </button>
           <button
             type="submit"
+            form="task-details-form"
             disabled={saving}
             className="task-modal-btn task-modal-btn-primary"
             style={{ opacity: saving ? 0.6 : 1 }}
@@ -891,7 +893,7 @@ function TaskDetailsModal({
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

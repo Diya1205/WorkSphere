@@ -207,11 +207,12 @@
   }
 }
 
+
 /* ===================================================== */
 /*  Task Details Modal — responsive dialog / bottom sheet */
-/*  Mobile-first: bottom sheet by default, becomes a       */
-/*  centered dialog at >=768px. Pure flexbox, no fixed      */
-/*  nesting tricks, no transforms, no backdrop-filter.      */
+/*  Panel is a plain div (layout owner). The <form> only   */
+/*  wraps the scrollable body — never the whole sheet.      */
+/*  No transforms, no fixed nesting, no vh hacks.            */
 /* ===================================================== */
 
 .task-modal-overlay {
@@ -229,12 +230,11 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 90vh;
-  max-height: 90vh;
+  height: 92vh;
+  max-height: 92vh;
   background: #ffffff;
   border-radius: 16px 16px 0 0;
   overflow: hidden;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .task-modal-handle {
@@ -254,6 +254,7 @@
   gap: 12px;
   border-bottom: 1px solid #d1d5db;
   padding: 16px 20px;
+  background: #ffffff;
 }
 
 .task-modal-body {
@@ -262,6 +263,8 @@
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 16px 20px;
+  margin: 0;
+  border: none;
 }
 
 .task-modal-footer {
@@ -272,6 +275,7 @@
   border-top: 1px solid #d1d5db;
   padding: 12px 20px;
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #ffffff;
 }
 
 .task-modal-icon-btn {
@@ -320,15 +324,10 @@
     height: auto;
     max-height: 85vh;
     border-radius: 12px;
-    padding-bottom: 0;
   }
 
   .task-modal-handle {
     display: none;
-  }
-
-  .task-modal-footer {
-    padding-bottom: 12px;
   }
 
   .task-modal-icon-btn {
