@@ -521,7 +521,19 @@ function TaskDetailsModal({
 
   return createPortal(
     <div className="task-modal-overlay" onClick={onClose}>
-      <div className="task-modal-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+  className="task-modal-panel"
+  onClick={(e) => e.stopPropagation()}
+  style={{
+    position: "fixed",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: "120px",
+    background: "red",
+    zIndex: 999999,
+  }}
+>
         {/* Drag handle — visible on mobile only (hidden >=768px via CSS) */}
         <div className="task-modal-handle" />
 
