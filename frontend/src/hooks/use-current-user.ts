@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/services/api";
-import { authStorage } from "@/lib/auth-storage";
 export type AppRole =
   | "ADMIN"
   | "MANAGER"
@@ -20,7 +19,7 @@ export function useCurrentUser() {
     queryKey: ["current-user"],
 
     queryFn: async () => {
-      const token = authStorage.getItem("access");
+      const token = sessionStorage.getItem("access");
 
       if (!token) {
         return null;

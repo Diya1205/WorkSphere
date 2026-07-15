@@ -1,5 +1,4 @@
 import axios from "axios";
-import { authStorage } from "@/lib/auth-storage";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -9,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = authStorage.getItem("access");
+  const token = sessionStorage.getItem("access");
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

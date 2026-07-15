@@ -35,7 +35,7 @@ export function formatDate(value?: string | null) {
 // tokens/components (Cards, Buttons, Inputs, Badges, StatusChip) as they
 // become available — the Task module intentionally has zero one-off colors
 // baked into JSX so that swap is a single-file change.
-import { authStorage } from "@/lib/auth-storage";
+
 export const colors = {
   bg: "#ffffff",
   border: "#d1d5db",
@@ -49,7 +49,7 @@ export const colors = {
 
 export function getCurrentUser(): { role?: string; employee_id?: number } {
   try {
-    return JSON.parse(authStorage.getItem("user") || "{}");
+    return JSON.parse(sessionStorage.getItem("user") || "{}");
   } catch {
     return {};
   }

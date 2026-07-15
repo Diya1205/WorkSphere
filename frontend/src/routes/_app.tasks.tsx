@@ -24,7 +24,7 @@ import {
   deleteTask,
   updateTaskStatus,
 } from "@/services/task";
-import { authStorage } from "@/lib/auth-storage";
+
 import { getEmployees } from "@/services/employeeService";
 
 export const Route = createFileRoute("/_app/tasks")({
@@ -100,7 +100,7 @@ function LiveTasksPage() {
     task: null as any,
   });
 
-  const user = JSON.parse(authStorage.getItem("user") || "{}");
+  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
   const isAdmin = user.role === "ADMIN";
 
   useEffect(() => {
