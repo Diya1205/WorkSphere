@@ -2,21 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
-  Pencil,
   Trash2,
   Loader2,
   X,
-  Info,
-  Users,
-  CalendarClock,
-  FileText,
-  MessageSquare,
-  Flag,
-  CalendarCheck2,
 } from "lucide-react";
 import { PageHeader } from "@/components/hrms/PageHeader";
 import { Avatar } from "@/components/hrms/Avatar";
-import { cn } from "@/lib/utils";
 import {
   getTasks,
   createTask,
@@ -37,41 +28,21 @@ export const Route = createFileRoute("/_app/live/tasks")({
 /* -------------------------------------------------------------------------- */
 
 const STATUS_COLUMNS = [
-  {
-    id: "TODO",
-    label: "To Do",
-    dot: "bg-slate-400",
-    chip: "bg-muted text-muted-foreground",
-  },
-  {
-    id: "IN_PROGRESS",
-    label: "In Progress",
-    dot: "bg-info",
-    chip: "bg-info-soft text-info",
-  },
-  {
-    id: "COMPLETED",
-    label: "Completed",
-    dot: "bg-success",
-    chip: "bg-success-soft text-success",
-  },
-  {
-    id: "CANCELLED",
-    label: "Cancelled",
-    dot: "bg-danger",
-    chip: "bg-danger-soft text-danger",
-  },
+  { id: "TODO", label: "To Do" },
+  { id: "IN_PROGRESS", label: "In Progress" },
+  { id: "COMPLETED", label: "Completed" },
+  { id: "CANCELLED", label: "Cancelled" },
 ] as const;
 
-const PRIORITY_CONFIG: Record<string, { label: string; badge: string }> = {
-  LOW: { label: "Low", badge: "bg-muted text-muted-foreground border-border" },
-  MEDIUM: { label: "Medium", badge: "bg-info-soft text-info border-info/20" },
-  HIGH: { label: "High", badge: "bg-warning-soft text-warning border-warning/20" },
-  URGENT: { label: "Urgent", badge: "bg-danger-soft text-danger border-danger/20" },
+const PRIORITY_LABEL: Record<string, string> = {
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+  URGENT: "Urgent",
 };
 
-function statusMeta(status: string) {
-  return STATUS_COLUMNS.find((c) => c.id === status) ?? STATUS_COLUMNS[0];
+function statusLabel(status: string) {
+  return STATUS_COLUMNS.find((c) => c.id === status)?.label ?? status;
 }
 
 function formatDate(value?: string | null) {
@@ -83,6 +54,18 @@ function formatDate(value?: string | null) {
   const yyyy = d.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Shared plain styles (diagnostic — no vars, no oklch, no blur, no transform)*/
+/* -------------------------------------------------------------------------- */
+
+const colors = {
+  bg: "#ffffff",
+  border: "#d1d5db",
+  text: "#111827",
+  subtext: "#6b7280",
+  page: "#f3f4f6",
+};
 
 /* -------------------------------------------------------------------------- */
 /*  Page                                                                      */
@@ -141,22 +124,21 @@ function LiveTasksPage() {
 
   const assigneeOptions = employees;
 
-  const tasksByStatus = useMemo(() => {
-    const grouped: Record<string, any[]> = {
-      TODO: [],
-      IN_PROGRESS: [],
-      COMPLETED: [],
-      CANCELLED: [],
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      TODO: 0,
+      IN_PROGRESS: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
     };
     for (const t of tasks || []) {
-      if (grouped[t.status]) grouped[t.status].push(t);
-      else grouped.TODO.push(t);
+      if (counts[t.status] !== undefined) counts[t.status] += 1;
     }
-    return grouped;
+    return counts;
   }, [tasks]);
 
   return (
-    <>
+    <div style={{ background: colors.page, minHeight: "100%" }}>
       <PageHeader
         title="Tasks"
         description="Manage employee tasks"
@@ -165,7 +147,19 @@ function LiveTasksPage() {
           isAdmin ? (
             <button
               onClick={() => setModal({ open: true, task: null })}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary-dark"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                height: "36px",
+                padding: "0 12px",
+                background: "#2563eb",
+                color: "#ffffff",
+                fontSize: "14px",
+                fontWeight: 500,
+                border: "none",
+                borderRadius: "6px",
+              }}
             >
               <Plus className="h-4 w-4" /> Add Task
             </button>
@@ -173,18 +167,82 @@ function LiveTasksPage() {
         }
       />
 
-      <div className="mx-auto max-w-[1440px] px-6 py-6 lg:px-8">
+      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "24px 16px" }}>
+        {/* Task Statistics */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginBottom: "20px",
+          }}
+        >
+          {STATUS_COLUMNS.map((col) => (
+            <div
+              key={col.id}
+              style={{
+                flex: "1 1 140px",
+                background: colors.bg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: "8px",
+                padding: "14px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: "20px", fontWeight: 700, color: colors.text }}>
+                {statusCounts[col.id]}
+              </div>
+              <div style={{ fontSize: "12px", color: colors.subtext, marginTop: "4px" }}>
+                {col.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Task List */}
         {loading ? (
-          <div className="grid place-items-center rounded-xl border border-border bg-surface py-24 text-muted-foreground">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              background: colors.bg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "8px",
+              padding: "60px 0",
+              color: colors.subtext,
+            }}
+          >
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : !tasks || tasks.length === 0 ? (
-          <div className="rounded-xl border border-border bg-surface py-24 text-center shadow-[var(--shadow-resting)]">
-            <div className="text-sm text-muted-foreground">No tasks yet</div>
+          <div
+            style={{
+              background: colors.bg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "8px",
+              padding: "60px 0",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: "14px", color: colors.subtext }}>No tasks yet</div>
             {isAdmin && (
               <button
                 onClick={() => setModal({ open: true, task: null })}
-                className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
+                style={{
+                  marginTop: "12px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  height: "36px",
+                  padding: "0 12px",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  border: "none",
+                  borderRadius: "6px",
+                }}
               >
                 <Plus className="h-4 w-4" />
                 Create your first task
@@ -192,50 +250,16 @@ function LiveTasksPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {STATUS_COLUMNS.map((col) => {
-              const colTasks = tasksByStatus[col.id] ?? [];
-              return (
-                <div
-                  key={col.id}
-                  className="flex min-h-[420px] flex-col rounded-xl border border-border bg-background/60 p-3"
-                >
-                  <div className="mb-3 flex items-center justify-between px-1">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("h-2 w-2 rounded-full", col.dot)} />
-                      <span className="text-sm font-semibold text-foreground">
-                        {col.label}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular",
-                          col.chip
-                        )}
-                      >
-                        {colTasks.length}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex max-h-[calc(100vh-260px)] flex-col gap-2.5 overflow-y-auto pr-0.5">
-                    {colTasks.map((t: any) => (
-                      <TaskCard
-                        key={t.id}
-                        task={t}
-                        employees={employees}
-                        isAdmin={isAdmin}
-                        onOpen={() => setModal({ open: true, task: t })}
-                      />
-                    ))}
-                    {colTasks.length === 0 && (
-                      <div className="rounded-md border border-dashed border-border py-8 text-center text-xs text-muted-foreground">
-                        Nothing here
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div>
+            {tasks.map((t: any) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                employees={employees}
+                isAdmin={isAdmin}
+                onOpen={() => setModal({ open: true, task: t })}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -262,22 +286,22 @@ function LiveTasksPage() {
           onDelete={
             isAdmin
               ? async (id: number) => {
-                  await handleDelete(id);
-                  setModal({ open: false, task: null });
-                }
+                await handleDelete(id);
+                setModal({ open: false, task: null });
+              }
               : undefined
           }
         />
       )}
-    </>
+    </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Task card                                                                 */
+/*  Task row (plain, simple, vertical list item — replaces Kanban TaskCard)   */
 /* -------------------------------------------------------------------------- */
 
-function TaskCard({
+function TaskRow({
   task,
   employees,
   isAdmin,
@@ -289,78 +313,88 @@ function TaskCard({
   onOpen: () => void;
 }) {
   const assignee = employees.find((e: any) => e.id === task.assigned_to);
-  const priority = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.LOW;
-  const status = statusMeta(task.status);
 
   const personName = isAdmin
     ? assignee
       ? `${assignee.first_name} ${assignee.last_name}`
       : "Unassigned"
     : task.assigned_by_name ?? "—";
-    console.log("TaskCard Render:", task);
 
   return (
     <div
-  onClick={onOpen}
-  style={{
-    background: "#ffffff",
-    border: "1px solid #d1d5db",
-    padding: "14px",
-    borderRadius: "12px",
-    boxShadow: "0 2px 8px rgba(0,0,0,.08)",
-  }}
->
-      <div className="flex items-start justify-between gap-2">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      onClick={onOpen}
+      style={{
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: "8px",
+        padding: "14px",
+        marginBottom: "10px",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "11px", fontWeight: 600, color: colors.subtext }}>
           {task.task_code ?? `TASK-${task.id}`}
         </span>
-        <span
-          className={cn(
-            "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-            priority.badge
-          )}
-        >
-          {priority.label}
+        <span style={{ fontSize: "11px", fontWeight: 600, color: colors.text }}>
+          {PRIORITY_LABEL[task.priority] ?? task.priority}
         </span>
       </div>
 
-      <h4
-  style={{
-    color: "#111827",
-    fontSize: "15px",
-    fontWeight: 600,
-    marginTop: "8px",
-  }}
->
+      <div style={{ fontSize: "15px", fontWeight: 600, color: colors.text, marginTop: "6px" }}>
         {task.title}
-      </h4>
+      </div>
 
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+      {task.description ? (
+        <div
+          style={{
+            fontSize: "13px",
+            color: colors.subtext,
+            marginTop: "4px",
+          }}
+        >
+          {task.description}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginTop: "10px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <Avatar name={personName} size="xs" />
-          <span
-  style={{
-    color: "#111827",
-    fontSize: "12px",
-    fontWeight: 500,
-  }}
->
-            {personName}
-          </span>
+          <span style={{ fontSize: "12px", color: colors.text }}>{personName}</span>
         </div>
         <span
-          className={cn(
-            "rounded-full px-2 py-0.5 text-[10px] font-medium",
-            status.chip
-          )}
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            color: colors.text,
+            border: `1px solid ${colors.border}`,
+            borderRadius: "4px",
+            padding: "2px 8px",
+          }}
         >
-          {status.label}
+          {statusLabel(task.status)}
         </span>
       </div>
 
-      <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "10px",
+          paddingTop: "8px",
+          borderTop: `1px solid ${colors.border}`,
+          fontSize: "11px",
+          color: colors.subtext,
+        }}
+      >
         <span>Assigned {formatDate(task.created_at)}</span>
-        <span className="tabular">Due {formatDate(task.due_date)}</span>
+        <span>Due {formatDate(task.due_date)}</span>
       </div>
     </div>
   );
@@ -371,6 +405,7 @@ function TaskCard({
 /*  Editing logic below mirrors the original TaskModal exactly:               */
 /*  employees may only change status + employee_remarks, admins may change    */
 /*  everything. No API/service/permission logic has been altered.             */
+/*  Styling only: plain white, no blur, no shadow-2xl, no animation.          */
 /* -------------------------------------------------------------------------- */
 
 function TaskDetailsModal({
@@ -451,43 +486,96 @@ function TaskDetailsModal({
   };
 
   const assignedEmployee = assignees.find((a) => a.id === task?.assigned_to);
-  const priorityInfo = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.LOW;
-  const statusInfo = statusMeta(status);
+
+  const inputStyle: React.CSSProperties = {
+    height: "36px",
+    width: "100%",
+    border: `1px solid ${colors.border}`,
+    borderRadius: "6px",
+    background: colors.bg,
+    padding: "0 10px",
+    fontSize: "14px",
+    color: colors.text,
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    marginBottom: "4px",
+    fontSize: "12px",
+    fontWeight: 500,
+    color: colors.subtext,
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 animate-[fadeIn_0.15s_ease-out]"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        background: "rgba(0,0,0,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+      }}
       onClick={onClose}
     >
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl animate-[modalIn_0.18s_ease-out]"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "88vh",
+          width: "100%",
+          maxWidth: "640px",
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          borderRadius: "8px",
+          overflow: "hidden",
+        }}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "12px",
+            borderBottom: `1px solid ${colors.border}`,
+            padding: "16px 20px",
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: colors.subtext }}>
                 {task?.task_code ?? (isEdit ? `TASK-${task.id}` : "New task")}
               </span>
               {isEdit && (
                 <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                    statusInfo.chip
-                  )}
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: "4px",
+                    padding: "2px 6px",
+                    color: colors.text,
+                  }}
                 >
-                  {statusInfo.label}
+                  {statusLabel(status)}
                 </span>
               )}
               <span
-                className={cn(
-                  "inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                  priorityInfo.badge
-                )}
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "4px",
+                  padding: "2px 6px",
+                  color: colors.text,
+                }}
               >
-                {priorityInfo.label}
+                {PRIORITY_LABEL[priority] ?? priority}
               </span>
             </div>
             {isAdmin ? (
@@ -496,21 +584,39 @@ function TaskDetailsModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
-                className="mt-1.5 w-full truncate border-none bg-transparent text-lg font-semibold text-foreground outline-none"
+                style={{
+                  marginTop: "8px",
+                  width: "100%",
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "17px",
+                  fontWeight: 600,
+                  color: colors.text,
+                  outline: "none",
+                }}
               />
             ) : (
-              <h2 className="mt-1.5 truncate text-lg font-semibold text-foreground">
+              <div style={{ marginTop: "8px", fontSize: "17px", fontWeight: 600, color: colors.text }}>
                 {title}
-              </h2>
+              </div>
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
             {isAdmin && isEdit && onDelete && (
               <button
                 type="button"
                 onClick={() => onDelete(task.id)}
-                className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition hover:bg-danger-soft hover:text-danger"
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "6px",
+                  background: colors.bg,
+                  color: "#b91c1c",
+                  display: "grid",
+                  placeItems: "center",
+                }}
                 aria-label="Delete task"
               >
                 <Trash2 className="h-4 w-4" />
@@ -519,7 +625,16 @@ function TaskDetailsModal({
             <button
               type="button"
               onClick={onClose}
-              className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground transition hover:bg-accent"
+              style={{
+                width: "32px",
+                height: "32px",
+                border: `1px solid ${colors.border}`,
+                borderRadius: "6px",
+                background: colors.bg,
+                color: colors.subtext,
+                display: "grid",
+                placeItems: "center",
+              }}
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -528,148 +643,260 @@ function TaskDetailsModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
           {/* General Information */}
-          <Section icon={Info} title="General Information">
-            <div className="grid grid-cols-2 gap-4">
+          <div style={{ marginBottom: "18px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
+              GENERAL INFORMATION
+            </div>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               {isAdmin && (
-                <Field label="Priority">
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                    className="input"
-                  >
+                <div style={{ flex: "1 1 160px" }}>
+                  <label style={labelStyle}>Priority</label>
+                  <select value={priority} onChange={(e) => setPriority(e.target.value)} style={inputStyle}>
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
                     <option value="URGENT">Urgent</option>
                   </select>
-                </Field>
+                </div>
               )}
-              <Field label="Status">
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="input"
-                >
+              <div style={{ flex: "1 1 160px" }}>
+                <label style={labelStyle}>Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
                   <option value="TODO">Todo</option>
                   <option value="IN_PROGRESS">In Progress</option>
                   <option value="COMPLETED">Completed</option>
                   <option value="CANCELLED">Cancelled</option>
                 </select>
-              </Field>
+              </div>
             </div>
-          </Section>
+          </div>
 
           {/* Assignment Information */}
-          <Section icon={Users} title="Assignment Information">
-            <div className="grid grid-cols-2 gap-4">
+          <div style={{ marginBottom: "18px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
+              ASSIGNMENT INFORMATION
+            </div>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               {isAdmin ? (
-                <Field label="Assigned To">
-                  <select
-                    value={assigneeId}
-                    onChange={(e) => setAssigneeId(e.target.value)}
-                    className="input"
-                  >
+                <div style={{ flex: "1 1 160px" }}>
+                  <label style={labelStyle}>Assigned To</label>
+                  <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={inputStyle}>
                     {assignees.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.first_name} {p.last_name}
                       </option>
                     ))}
                   </select>
-                </Field>
+                </div>
               ) : (
-                <ReadOnlyRow
-                  label="Assigned To"
-                  value={
-                    assignedEmployee
-                      ? `${assignedEmployee.first_name} ${assignedEmployee.last_name}`
-                      : "—"
-                  }
-                  avatarName={
-                    assignedEmployee
-                      ? `${assignedEmployee.first_name} ${assignedEmployee.last_name}`
-                      : undefined
-                  }
-                />
+                <div style={{ flex: "1 1 160px" }}>
+                  <label style={labelStyle}>Assigned To</label>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      height: "36px",
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: "6px",
+                      padding: "0 10px",
+                      fontSize: "14px",
+                      color: colors.text,
+                    }}
+                  >
+                    {assignedEmployee && (
+                      <Avatar
+                        name={`${assignedEmployee.first_name} ${assignedEmployee.last_name}`}
+                        size="xs"
+                      />
+                    )}
+                    <span>
+                      {assignedEmployee
+                        ? `${assignedEmployee.first_name} ${assignedEmployee.last_name}`
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
               )}
-              <ReadOnlyRow
-                label="Assigned By"
-                value={task?.assigned_by_name ?? "—"}
-                avatarName={task?.assigned_by_name}
-              />
+              <div style={{ flex: "1 1 160px" }}>
+                <label style={labelStyle}>Assigned By</label>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    height: "36px",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: "6px",
+                    padding: "0 10px",
+                    fontSize: "14px",
+                    color: colors.text,
+                  }}
+                >
+                  {task?.assigned_by_name && <Avatar name={task.assigned_by_name} size="xs" />}
+                  <span>{task?.assigned_by_name ?? "—"}</span>
+                </div>
+              </div>
             </div>
-          </Section>
+          </div>
 
           {/* Timeline */}
-          <Section icon={CalendarClock} title="Timeline">
-            <div className="grid grid-cols-2 gap-4">
-              <ReadOnlyRow label="Assigned Date" value={formatDate(task?.created_at)} />
-              <Field label="Start Date">
+          <div style={{ marginBottom: "18px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
+              TIMELINE
+            </div>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 160px" }}>
+                <label style={labelStyle}>Assigned Date</label>
+                <div
+                  style={{
+                    height: "36px",
+                    display: "flex",
+                    alignItems: "center",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: "6px",
+                    padding: "0 10px",
+                    fontSize: "14px",
+                    color: colors.text,
+                  }}
+                >
+                  {formatDate(task?.created_at)}
+                </div>
+              </div>
+              <div style={{ flex: "1 1 160px" }}>
+                <label style={labelStyle}>Start Date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   disabled={!isAdmin}
-                  className="input"
+                  style={inputStyle}
                 />
-              </Field>
-              <Field label="Due Date">
+              </div>
+              <div style={{ flex: "1 1 160px" }}>
+                <label style={labelStyle}>Due Date</label>
                 <input
                   type="date"
                   required
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   disabled={!isAdmin}
-                  className="input"
+                  style={inputStyle}
                 />
-              </Field>
+              </div>
               {task?.completed_at && (
-                <ReadOnlyRow
-                  label="Completed Date"
-                  value={formatDate(task?.completed_at)}
-                  icon={CalendarCheck2}
-                />
+                <div style={{ flex: "1 1 160px" }}>
+                  <label style={labelStyle}>Completed Date</label>
+                  <div
+                    style={{
+                      height: "36px",
+                      display: "flex",
+                      alignItems: "center",
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: "6px",
+                      padding: "0 10px",
+                      fontSize: "14px",
+                      color: colors.text,
+                    }}
+                  >
+                    {formatDate(task.completed_at)}
+                  </div>
+                </div>
               )}
             </div>
-          </Section>
+          </div>
 
           {/* Description */}
-          <Section icon={FileText} title="Description">
+          <div style={{ marginBottom: "18px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
+              DESCRIPTION
+            </div>
             {isAdmin ? (
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 placeholder="Add a description…"
-                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                style={{
+                  width: "100%",
+                  resize: "none",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "6px",
+                  background: colors.bg,
+                  padding: "8px 10px",
+                  fontSize: "14px",
+                  color: colors.text,
+                  outline: "none",
+                }}
               />
             ) : (
-              <p className="whitespace-pre-wrap rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+              <div
+                style={{
+                  whiteSpace: "pre-wrap",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "6px",
+                  padding: "8px 10px",
+                  fontSize: "14px",
+                  color: colors.text,
+                }}
+              >
                 {description || "No description provided."}
-              </p>
+              </div>
             )}
-          </Section>
+          </div>
 
           {/* Employee Remarks */}
-          <Section icon={MessageSquare} title="Employee Remarks">
+          <div style={{ marginBottom: "18px" }}>
+            <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
+              EMPLOYEE REMARKS
+            </div>
             {isAdmin ? (
-              <p className="whitespace-pre-wrap rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground">
+              <div
+                style={{
+                  whiteSpace: "pre-wrap",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "6px",
+                  padding: "8px 10px",
+                  fontSize: "14px",
+                  color: colors.text,
+                }}
+              >
                 {employeeRemarks || "No remarks yet."}
-              </p>
+              </div>
             ) : (
               <textarea
                 value={employeeRemarks}
                 onChange={(e) => setEmployeeRemarks(e.target.value)}
                 rows={4}
                 placeholder="Add a work update or completion remarks…"
-                className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                style={{
+                  width: "100%",
+                  resize: "none",
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: "6px",
+                  background: colors.bg,
+                  padding: "8px 10px",
+                  fontSize: "14px",
+                  color: colors.text,
+                  outline: "none",
+                }}
               />
             )}
-          </Section>
+          </div>
 
           {isEdit && (task?.created_at || task?.updated_at) && (
-            <div className="flex items-center gap-4 border-t border-border pt-3 text-[11px] text-muted-foreground">
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+                borderTop: `1px solid ${colors.border}`,
+                paddingTop: "10px",
+                fontSize: "11px",
+                color: colors.subtext,
+              }}
+            >
               {task?.created_at && <span>Created {formatDate(task.created_at)}</span>}
               {task?.updated_at && <span>Updated {formatDate(task.updated_at)}</span>}
             </div>
@@ -677,90 +904,53 @@ function TaskDetailsModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "8px",
+            borderTop: `1px solid ${colors.border}`,
+            padding: "12px 20px",
+          }}
+        >
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-md border border-border bg-surface px-3 text-sm hover:bg-accent"
+            style={{
+              height: "36px",
+              padding: "0 12px",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "6px",
+              background: colors.bg,
+              fontSize: "14px",
+              color: colors.text,
+            }}
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-dark disabled:opacity-50"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              height: "36px",
+              padding: "0 16px",
+              border: "none",
+              borderRadius: "6px",
+              background: "#2563eb",
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#ffffff",
+              opacity: saving ? 0.6 : 1,
+            }}
           >
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
       </form>
-
-      <style>{`
-        .input{height:2.25rem;width:100%;border:1px solid hsl(var(--border));border-radius:.375rem;background:hsl(var(--background));padding:0 .75rem;font-size:.875rem;outline:none}
-        .input:focus{border-color:hsl(var(--primary));box-shadow:0 0 0 2px hsl(var(--primary)/.15)}
-        .input:disabled{background:hsl(var(--muted));color:hsl(var(--muted-foreground));cursor:not-allowed}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-      `}</style>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/*  Small building blocks                                                     */
-/* -------------------------------------------------------------------------- */
-
-function Section({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section>
-      <div className="mb-2.5 flex items-center gap-1.5">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </h3>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function ReadOnlyRow({
-  label,
-  value,
-  avatarName,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  avatarName?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="block">
-      <span className="mb-1 block text-xs font-medium text-muted-foreground">{label}</span>
-      <div className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-foreground">
-        {avatarName && <Avatar name={avatarName} size="xs" />}
-        {Icon && !avatarName && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
-        <span className="truncate">{value}</span>
-      </div>
     </div>
   );
 }
