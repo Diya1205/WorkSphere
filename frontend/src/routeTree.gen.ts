@@ -35,6 +35,8 @@ import { Route as AppLiveTasksRouteImport } from './routes/_app.live.tasks'
 import { Route as AppLiveMeetingsRouteImport } from './routes/_app.live.meetings'
 import { Route as AppLiveDirectoryRouteImport } from './routes/_app.live.directory'
 import { Route as AppEmployeesIdRouteImport } from './routes/_app.employees.$id'
+import { Route as AppLiveTasksIndexRouteImport } from './routes/_app.live.tasks.index'
+import { Route as AppLiveTasksTaskIdRouteImport } from './routes/_app.live.tasks.$taskId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -165,6 +167,16 @@ const AppEmployeesIdRoute = AppEmployeesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppEmployeesRoute,
 } as any)
+const AppLiveTasksIndexRoute = AppLiveTasksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLiveTasksRoute,
+} as any)
+const AppLiveTasksTaskIdRoute = AppLiveTasksTaskIdRouteImport.update({
+  id: '/$taskId',
+  path: '/$taskId',
+  getParentRoute: () => AppLiveTasksRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -191,7 +203,9 @@ export interface FileRoutesByFullPath {
   '/employees/$id': typeof AppEmployeesIdRoute
   '/live/directory': typeof AppLiveDirectoryRoute
   '/live/meetings': typeof AppLiveMeetingsRoute
-  '/live/tasks': typeof AppLiveTasksRoute
+  '/live/tasks': typeof AppLiveTasksRouteWithChildren
+  '/live/tasks/$taskId': typeof AppLiveTasksTaskIdRoute
+  '/live/tasks/': typeof AppLiveTasksIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
@@ -218,7 +232,8 @@ export interface FileRoutesByTo {
   '/employees/$id': typeof AppEmployeesIdRoute
   '/live/directory': typeof AppLiveDirectoryRoute
   '/live/meetings': typeof AppLiveMeetingsRoute
-  '/live/tasks': typeof AppLiveTasksRoute
+  '/live/tasks/$taskId': typeof AppLiveTasksTaskIdRoute
+  '/live/tasks': typeof AppLiveTasksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -247,7 +262,9 @@ export interface FileRoutesById {
   '/_app/employees/$id': typeof AppEmployeesIdRoute
   '/_app/live/directory': typeof AppLiveDirectoryRoute
   '/_app/live/meetings': typeof AppLiveMeetingsRoute
-  '/_app/live/tasks': typeof AppLiveTasksRoute
+  '/_app/live/tasks': typeof AppLiveTasksRouteWithChildren
+  '/_app/live/tasks/$taskId': typeof AppLiveTasksTaskIdRoute
+  '/_app/live/tasks/': typeof AppLiveTasksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -277,6 +294,8 @@ export interface FileRouteTypes {
     | '/live/directory'
     | '/live/meetings'
     | '/live/tasks'
+    | '/live/tasks/$taskId'
+    | '/live/tasks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -303,6 +322,7 @@ export interface FileRouteTypes {
     | '/employees/$id'
     | '/live/directory'
     | '/live/meetings'
+    | '/live/tasks/$taskId'
     | '/live/tasks'
   id:
     | '__root__'
@@ -332,6 +352,8 @@ export interface FileRouteTypes {
     | '/_app/live/directory'
     | '/_app/live/meetings'
     | '/_app/live/tasks'
+    | '/_app/live/tasks/$taskId'
+    | '/_app/live/tasks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -523,6 +545,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEmployeesIdRouteImport
       parentRoute: typeof AppEmployeesRoute
     }
+    '/_app/live/tasks/': {
+      id: '/_app/live/tasks/'
+      path: '/'
+      fullPath: '/live/tasks/'
+      preLoaderRoute: typeof AppLiveTasksIndexRouteImport
+      parentRoute: typeof AppLiveTasksRoute
+    }
+    '/_app/live/tasks/$taskId': {
+      id: '/_app/live/tasks/$taskId'
+      path: '/$taskId'
+      fullPath: '/live/tasks/$taskId'
+      preLoaderRoute: typeof AppLiveTasksTaskIdRouteImport
+      parentRoute: typeof AppLiveTasksRoute
+    }
   }
 }
 
@@ -536,6 +572,20 @@ const AppEmployeesRouteChildren: AppEmployeesRouteChildren = {
 
 const AppEmployeesRouteWithChildren = AppEmployeesRoute._addFileChildren(
   AppEmployeesRouteChildren,
+)
+
+interface AppLiveTasksRouteChildren {
+  AppLiveTasksTaskIdRoute: typeof AppLiveTasksTaskIdRoute
+  AppLiveTasksIndexRoute: typeof AppLiveTasksIndexRoute
+}
+
+const AppLiveTasksRouteChildren: AppLiveTasksRouteChildren = {
+  AppLiveTasksTaskIdRoute: AppLiveTasksTaskIdRoute,
+  AppLiveTasksIndexRoute: AppLiveTasksIndexRoute,
+}
+
+const AppLiveTasksRouteWithChildren = AppLiveTasksRoute._addFileChildren(
+  AppLiveTasksRouteChildren,
 )
 
 interface AppRouteChildren {
@@ -561,7 +611,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppLiveDirectoryRoute: typeof AppLiveDirectoryRoute
   AppLiveMeetingsRoute: typeof AppLiveMeetingsRoute
-  AppLiveTasksRoute: typeof AppLiveTasksRoute
+  AppLiveTasksRoute: typeof AppLiveTasksRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -587,7 +637,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppLiveDirectoryRoute: AppLiveDirectoryRoute,
   AppLiveMeetingsRoute: AppLiveMeetingsRoute,
-  AppLiveTasksRoute: AppLiveTasksRoute,
+  AppLiveTasksRoute: AppLiveTasksRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

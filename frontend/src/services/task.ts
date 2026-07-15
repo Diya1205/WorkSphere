@@ -5,6 +5,11 @@ export const getTasks = async () => {
   return response.data;
 };
 
+export const getTask = async (id: number) => {
+  const response = await api.get(`/tasks/${id}/`);
+  return response.data;
+};
+
 export const createTask = async (data: any) => {
   const response = await api.post("/tasks/", data);
   return response.data;
