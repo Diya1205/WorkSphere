@@ -15,7 +15,7 @@ import {
   deleteTask,
   updateTaskStatus,
 } from "@/services/task";
-
+import { createPortal } from "react-dom";
 import { getEmployees } from "@/services/employeeService";
 
 export const Route = createFileRoute("/_app/live/tasks")({
@@ -519,7 +519,7 @@ function TaskDetailsModal({
      Header/footer stay pinned purely via flex-column + flex:1 on body.
   ------------------------------------------------------------------ */
 
-  return (
+  return createPortal(
     <div className="task-modal-overlay" onClick={onClose}>
       <div className="task-modal-panel" onClick={(e) => e.stopPropagation()}>
         {/* Drag handle — visible on mobile only (hidden >=768px via CSS) */}
@@ -894,6 +894,7 @@ function TaskDetailsModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

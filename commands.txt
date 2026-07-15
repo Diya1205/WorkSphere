@@ -1,0 +1,50 @@
+ssh command for worksphere
+
+
+Complete deployment workflow
+1. SSH into AWS
+ssh -i D:\pemkey\land-acquisition-key.pem ubuntu@13.204.46.163
+2. Run these commands
+cd ~/WorkSphere
+
+git pull origin main
+
+cd frontend
+
+npm install
+
+npm run build
+
+sudo systemctl restart worksphere-frontend
+
+sudo systemctl restart nginx
+
+
+
+
+
+Final deployment checklist
+
+Local
+
+git add .
+git commit -m "Your commit message"
+git push origin main
+
+AWS
+
+ssh -i D:\pemkey\land-acquisition-key.pem ubuntu@13.204.46.163
+
+cd ~/WorkSphere
+
+git pull origin main
+
+cd frontend
+
+npm install
+
+npm run build
+
+sudo systemctl restart worksphere-frontend
+
+sudo systemctl restart nginx
