@@ -520,17 +520,18 @@ function TaskDetailsModal({
   ------------------------------------------------------------------ */
 
   return (
-    <div className="ts-modal-overlay" onClick={onClose}>
+    <div className="task-modal-overlay" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="ts-modal-panel"
+        className="task-modal-panel"
       >
-        {/* Drag handle — mobile only, purely visual */}
-        <div className="ts-modal-handle" />
+        {/* Drag handle — mobile only, hidden at >=768px via CSS */}
+        <div className="task-modal-handle" />
 
-        {/* Header (pinned via flex layout, not position:sticky) */}
+        {/* Header */}
         <div
+          className="task-modal-header"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -538,7 +539,6 @@ function TaskDetailsModal({
             gap: "12px",
             borderBottom: `1px solid ${colors.border}`,
             padding: "16px 20px",
-            flexShrink: 0,
           }}
         >
           <div style={{ minWidth: 0 }}>
@@ -638,7 +638,7 @@ function TaskDetailsModal({
         </div>
 
         {/* Body — scrolls independently, header/footer stay put */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 20px", WebkitOverflowScrolling: "touch" }}>
+        <div className="task-modal-body" style={{ padding: "16px 20px" }}>
           {/* General Information */}
           <div style={{ marginBottom: "18px" }}>
             <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
@@ -898,15 +898,15 @@ function TaskDetailsModal({
           )}
         </div>
 
-        {/* Footer (pinned via flex layout, not position:sticky) */}
+        {/* Footer */}
         <div
+          className="task-modal-footer"
           style={{
             display: "flex",
             justifyContent: "flex-end",
             gap: "8px",
             borderTop: `1px solid ${colors.border}`,
             padding: "12px 20px",
-            flexShrink: 0,
           }}
         >
           <button
@@ -947,79 +947,6 @@ function TaskDetailsModal({
           </button>
         </div>
       </form>
-
-      <style>{`
-        .ts-modal-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 50;
-          background: rgba(0,0,0,0.5);
-        }
-
-        /* Mobile default: bottom sheet. The panel positions itself with
-           fixed+bottom:0 directly — it does NOT rely on the overlay
-           being display:flex + align-items:center to center it. */
-        .ts-modal-panel {
-          position: fixed;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          top: auto;
-          width: 100%;
-          height: 90vh;
-          max-height: 90vh;
-          background: ${colors.bg};
-          border: 1px solid ${colors.border};
-          border-top-left-radius: 16px;
-          border-top-right-radius: 16px;
-          border-bottom-left-radius: 0;
-          border-bottom-right-radius: 0;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
-        .ts-modal-handle {
-          flex-shrink: 0;
-          width: 40px;
-          height: 4px;
-          border-radius: 999px;
-          background: ${colors.border};
-          margin: 10px auto 0 auto;
-        }
-
-        /* Tablet: larger centered modal */
-        @media (min-width: 768px) {
-          .ts-modal-overlay {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-          }
-          .ts-modal-panel {
-            position: relative;
-            left: auto;
-            right: auto;
-            bottom: auto;
-            top: auto;
-            height: auto;
-            max-height: 88vh;
-            width: 100%;
-            max-width: 720px;
-            border-radius: 8px;
-          }
-          .ts-modal-handle {
-            display: none;
-          }
-        }
-
-        /* Desktop: standard centered modal width */
-        @media (min-width: 1024px) {
-          .ts-modal-panel {
-            max-width: 640px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

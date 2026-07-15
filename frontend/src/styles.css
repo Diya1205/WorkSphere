@@ -206,3 +206,87 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/*  Task Details Modal — single fixed overlay, no nested position:fixed        */
+/*  Mobile: bottom sheet via flexbox alignment (justify-content: flex-end).    */
+/*  Desktop/tablet: centered dialog via flexbox alignment (center/center).     */
+/* -------------------------------------------------------------------------- */
+
+.task-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.task-modal-panel {
+  position: relative;
+  width: 100%;
+  max-height: 90vh;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-bottom: none;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.task-modal-handle {
+  flex-shrink: 0;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d1d5db;
+  margin: 10px auto 0 auto;
+}
+
+.task-modal-header,
+.task-modal-footer {
+  flex-shrink: 0;
+}
+
+.task-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.task-modal-footer {
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
+
+/* Tablet and up: centered dialog instead of bottom sheet */
+@media (min-width: 768px) {
+  .task-modal-overlay {
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+  }
+  .task-modal-panel {
+    max-height: 88vh;
+    max-width: 720px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+  }
+  .task-modal-handle {
+    display: none;
+  }
+  .task-modal-footer {
+    padding-bottom: 12px;
+  }
+}
+
+/* Desktop: match original max-width */
+@media (min-width: 1024px) {
+  .task-modal-panel {
+    max-width: 640px;
+  }
+}
