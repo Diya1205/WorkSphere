@@ -506,36 +506,30 @@ function TaskDetailsModal({
     color: colors.subtext,
   };
 
+  /* ------------------------------------------------------------------
+     Responsive shell:
+     - Mobile (default, <768px): panel is fixed to the bottom on its own,
+       NOT dependent on a flex-centered parent. This is a plain bottom
+       sheet — the thing Android WebView failed to paint was the
+       fixed+flex-center+large-scroll-content combo, so mobile now
+       avoids that combo entirely.
+     - Tablet/Desktop (>=768px): overlay switches to flex centering and
+       the panel becomes a normal-flow centered box (classic modal).
+     No transform, no backdrop-filter, no position:sticky anywhere.
+     Header/footer stay pinned purely via flex-column + flex:1 on body.
+  ------------------------------------------------------------------ */
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px",
-      }}
-      onClick={onClose}
-    >
+    <div className="ts-modal-overlay" onClick={onClose}>
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "88vh",
-          width: "100%",
-          maxWidth: "640px",
-          background: colors.bg,
-          border: `1px solid ${colors.border}`,
-          borderRadius: "8px",
-          overflow: "hidden",
-        }}
+        className="ts-modal-panel"
       >
-        {/* Header */}
+        {/* Drag handle — mobile only, purely visual */}
+        <div className="ts-modal-handle" />
+
+        {/* Header (pinned via flex layout, not position:sticky) */}
         <div
           style={{
             display: "flex",
@@ -544,6 +538,7 @@ function TaskDetailsModal({
             gap: "12px",
             borderBottom: `1px solid ${colors.border}`,
             padding: "16px 20px",
+            flexShrink: 0,
           }}
         >
           <div style={{ minWidth: 0 }}>
@@ -642,8 +637,8 @@ function TaskDetailsModal({
           </div>
         </div>
 
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+        {/* Body — scrolls independently, header/footer stay put */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 20px", WebkitOverflowScrolling: "touch" }}>
           {/* General Information */}
           <div style={{ marginBottom: "18px" }}>
             <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
@@ -903,7 +898,7 @@ function TaskDetailsModal({
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer (pinned via flex layout, not position:sticky) */}
         <div
           style={{
             display: "flex",
@@ -911,6 +906,7 @@ function TaskDetailsModal({
             gap: "8px",
             borderTop: `1px solid ${colors.border}`,
             padding: "12px 20px",
+            flexShrink: 0,
           }}
         >
           <button
@@ -951,6 +947,79 @@ function TaskDetailsModal({
           </button>
         </div>
       </form>
+
+      <style>{`
+        .ts-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          background: rgba(0,0,0,0.5);
+        }
+
+        /* Mobile default: bottom sheet. The panel positions itself with
+           fixed+bottom:0 directly — it does NOT rely on the overlay
+           being display:flex + align-items:center to center it. */
+        .ts-modal-panel {
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          top: auto;
+          width: 100%;
+          height: 90vh;
+          max-height: 90vh;
+          background: ${colors.bg};
+          border: 1px solid ${colors.border};
+          border-top-left-radius: 16px;
+          border-top-right-radius: 16px;
+          border-bottom-left-radius: 0;
+          border-bottom-right-radius: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .ts-modal-handle {
+          flex-shrink: 0;
+          width: 40px;
+          height: 4px;
+          border-radius: 999px;
+          background: ${colors.border};
+          margin: 10px auto 0 auto;
+        }
+
+        /* Tablet: larger centered modal */
+        @media (min-width: 768px) {
+          .ts-modal-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+          }
+          .ts-modal-panel {
+            position: relative;
+            left: auto;
+            right: auto;
+            bottom: auto;
+            top: auto;
+            height: auto;
+            max-height: 88vh;
+            width: 100%;
+            max-width: 720px;
+            border-radius: 8px;
+          }
+          .ts-modal-handle {
+            display: none;
+          }
+        }
+
+        /* Desktop: standard centered modal width */
+        @media (min-width: 1024px) {
+          .ts-modal-panel {
+            max-width: 640px;
+          }
+        }
+      `}</style>
     </div>
   );
 }
