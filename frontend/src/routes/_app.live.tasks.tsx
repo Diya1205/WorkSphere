@@ -526,21 +526,11 @@ function TaskDetailsModal({
         onSubmit={submit}
         className="task-modal-panel"
       >
-        {/* Drag handle — mobile only, hidden at >=768px via CSS */}
+        {/* Drag handle — visible on mobile only (hidden >=768px via CSS) */}
         <div className="task-modal-handle" />
 
-        {/* Header */}
-        <div
-          className="task-modal-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: "12px",
-            borderBottom: `1px solid ${colors.border}`,
-            padding: "16px 20px",
-          }}
-        >
+        {/* Header — fixed, never scrolls */}
+        <div className="task-modal-header">
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <span style={{ fontSize: "11px", fontWeight: 600, color: colors.subtext }}>
@@ -602,16 +592,8 @@ function TaskDetailsModal({
               <button
                 type="button"
                 onClick={() => onDelete(task.id)}
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "6px",
-                  background: colors.bg,
-                  color: "#b91c1c",
-                  display: "grid",
-                  placeItems: "center",
-                }}
+                className="task-modal-icon-btn"
+                style={{ color: "#b91c1c" }}
                 aria-label="Delete task"
               >
                 <Trash2 className="h-4 w-4" />
@@ -620,16 +602,8 @@ function TaskDetailsModal({
             <button
               type="button"
               onClick={onClose}
-              style={{
-                width: "32px",
-                height: "32px",
-                border: `1px solid ${colors.border}`,
-                borderRadius: "6px",
-                background: colors.bg,
-                color: colors.subtext,
-                display: "grid",
-                placeItems: "center",
-              }}
+              className="task-modal-icon-btn"
+              style={{ color: colors.subtext }}
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -637,8 +611,8 @@ function TaskDetailsModal({
           </div>
         </div>
 
-        {/* Body — scrolls independently, header/footer stay put */}
-        <div className="task-modal-body" style={{ padding: "16px 20px" }}>
+        {/* Body — the only scrollable region */}
+        <div className="task-modal-body">
           {/* General Information */}
           <div style={{ marginBottom: "18px" }}>
             <div style={{ fontSize: "12px", fontWeight: 600, color: colors.subtext, marginBottom: "8px" }}>
@@ -898,49 +872,20 @@ function TaskDetailsModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div
-          className="task-modal-footer"
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: "8px",
-            borderTop: `1px solid ${colors.border}`,
-            padding: "12px 20px",
-          }}
-        >
+        {/* Footer — fixed, never scrolls */}
+        <div className="task-modal-footer">
           <button
             type="button"
             onClick={onClose}
-            style={{
-              height: "36px",
-              padding: "0 12px",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "6px",
-              background: colors.bg,
-              fontSize: "14px",
-              color: colors.text,
-            }}
+            className="task-modal-btn task-modal-btn-secondary"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              height: "36px",
-              padding: "0 16px",
-              border: "none",
-              borderRadius: "6px",
-              background: "#2563eb",
-              fontSize: "14px",
-              fontWeight: 500,
-              color: "#ffffff",
-              opacity: saving ? 0.6 : 1,
-            }}
+            className="task-modal-btn task-modal-btn-primary"
+            style={{ opacity: saving ? 0.6 : 1 }}
           >
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {saving ? "Saving…" : "Save"}
