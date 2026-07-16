@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import api from "@/services/api";
+import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
@@ -56,15 +57,33 @@ function toLocalISODate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 async function getCurrentPosition() {
-  const permission = await Geolocation.requestPermissions();
 
-  if (permission.location !== "granted") {
-    throw new Error("Location permission is required.");
+  if (Capacitor.isNativePlatform()) {
+
+    const permission = await Geolocation.requestPermissions();
+
+    if (permission.location !== "granted") {
+      throw new Error("Location permission denied.");
+    }
+
+    return await Geolocation.getCurrentPosition({
+      enableHighAccuracy: true,
+      timeout: 15000,
+    });
+
   }
 
-  return await Geolocation.getCurrentPosition({
-    enableHighAccuracy: true,
-    timeout: 15000,
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+
+    navigator.geolocation.getCurrentPosition(
+      resolve,
+      reject,
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+      }
+    );
+
   });
 }
 
@@ -75,12 +94,17 @@ async function getGpsCoords(): Promise<{
   try {
     const position = await getCurrentPosition();
 
+    console.log("Latitude:", position.coords.latitude);
+    console.log("Longitude:", position.coords.longitude);
+
     return {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
     };
-  } catch {
-    throw new Error("Unable to fetch current location.");
+  } catch (error) {
+    console.error("GPS ERROR:", error);
+
+    throw error;
   }
 }
 
