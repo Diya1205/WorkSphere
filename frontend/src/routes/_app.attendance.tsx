@@ -8,6 +8,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import api from "@/services/api";
+import { Geolocation } from "@capacitor/geolocation";
 export const Route = createFileRoute("/_app/attendance")({
   component: AttendancePage,
   head: () => ({ meta: [{ title: "Attendance · TirthInfotech" }] }),
@@ -54,34 +55,35 @@ function toLocalISODate(date: Date) {
 
   return `${year}-${month}-${day}`;
 }
-function getCurrentPosition(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("Geolocation is not supported on this device."));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    });
+async function getCurrentPosition() {
+  const permission = await Geolocation.requestPermissions();
+
+  if (permission.location !== "granted") {
+    throw new Error("Location permission is required.");
+  }
+
+  return await Geolocation.getCurrentPosition({
+    enableHighAccuracy: true,
+    timeout: 15000,
   });
 }
 
-async function getGpsCoords(): Promise<{ latitude: number; longitude: number }> {
+async function getGpsCoords(): Promise<{
+  latitude: number;
+  longitude: number;
+}> {
   try {
     const position = await getCurrentPosition();
+
     return {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
     };
-  } catch (err: any) {
-    if (err.code === 1) {
-      throw new Error("Location permission is required.");
-    }
+  } catch {
     throw new Error("Unable to fetch current location.");
   }
 }
+
 function AttendancePage() {
   const currentUser = useCurrentUser();
 
