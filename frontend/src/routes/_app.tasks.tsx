@@ -366,12 +366,6 @@ function TaskCard({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*  Task details modal                                                        */
-/*  Editing logic below mirrors the original TaskModal exactly:               */
-/*  employees may only change status + employee_remarks, admins may change    */
-/*  everything. No API/service/permission logic has been altered.             */
-/* -------------------------------------------------------------------------- */
 
 function TaskDetailsModal({
   task,

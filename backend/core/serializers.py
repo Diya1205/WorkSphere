@@ -81,10 +81,31 @@ class AttendanceSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     working_hours_display = serializers.SerializerMethodField()
+
+    # GPS input only — used for geofence validation in the view,
+    # never stored as raw model fields, never echoed back to the client.
+    latitude = serializers.FloatField(write_only=True, required=False)
+    longitude = serializers.FloatField(write_only=True, required=False)
+
     class Meta:
         model = Attendance
-        fields = "__all__"
-
+        fields = [
+            "id",
+            "employee",
+            "employee_name",
+            "employee_code",
+            "date",
+            "check_in",
+            "check_out",
+            "location",
+            "status",
+            "working_hours",
+            "working_hours_display",
+            "created_at",
+            "updated_at",
+            "latitude",
+            "longitude",
+        ]
         read_only_fields = (
             "employee",
             "date",
@@ -93,20 +114,20 @@ class AttendanceSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-
+    
     def get_employee_name(self, obj):
         return f"{obj.employee.first_name} {obj.employee.last_name}"
+
     def get_working_hours_display(self, obj):
         if not obj.working_hours:
             return None
 
         total_seconds = int(obj.working_hours.total_seconds())
-
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
 
         return f"{hours}h {minutes}m"
-    
+
 class TaskSerializer(serializers.ModelSerializer):
 
     assigned_date = serializers.DateTimeField(

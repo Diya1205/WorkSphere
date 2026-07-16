@@ -23,6 +23,22 @@ from .serializers import (
     TaskSerializer,
     ProfileSerializer,
 )
+from django.conf import settings
+from geopy.distance import geodesic
+
+
+def _validate_office_geofence(latitude, longitude):
+    """
+    Phase 1: single hardcoded office (see settings.OFFICE_LATITUDE/LONGITUDE/RADIUS_METERS).
+    Phase 2: swap this lookup for a per-employee Office model —
+    the function signature and call sites in the view stay unchanged.
+    """
+    office = (settings.OFFICE_LATITUDE, settings.OFFICE_LONGITUDE)
+    employee_location = (latitude, longitude)
+
+    distance = geodesic(office, employee_location).meters
+
+    return distance <= settings.OFFICE_RADIUS_METERS
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -118,64 +134,77 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             employee=self.request.user.employee
         )
 
-    def create(self, request, *args, **kwargs): 
+    def create(self, request, *args, **kwargs):
         if request.user.is_superuser:
             return Response(
-                {
-                    "detail": "Administrators cannot mark attendance."
-                },
+                {"detail": "Administrators cannot mark attendance."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        latitude = request.data.get("latitude")
+        longitude = request.data.get("longitude")
+
+        if latitude is None or longitude is None:
+            return Response(
+                {"detail": "Location is required to mark attendance."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Invalid location data."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not _validate_office_geofence(latitude, longitude):
+            return Response(
+                {"detail": "You are outside the office premises."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         employee = request.user.employee
         today = timezone.localdate()
-    
+        location_str = f"{latitude},{longitude}"
+
         attendance = Attendance.objects.filter(
             employee=employee,
             date=today,
         ).first()
-    
+
         # Check In
         if attendance is None:
             check_in_time = timezone.localtime(timezone.now())
 
-            office_start = check_in_time.replace(
-                hour=10,
-                minute=15,
-                second=0,
-                microsecond=0,
-            )
-
-            attendance_status = "PRESENT"
             attendance = Attendance.objects.create(
                 employee=employee,
                 date=today,
                 check_in=check_in_time,
-                status=attendance_status,
+                status="PRESENT",
+                location=location_str,
             )
-    
+
         # Check Out
         elif attendance.check_out is None:
             attendance.check_out = timezone.localtime(timezone.now())
-
             attendance.working_hours = (
                 attendance.check_out - attendance.check_in
             )
+            attendance.location = location_str
 
             attendance.save(
-                update_fields=[
-                    "check_out",
-                    "working_hours",
-                ]
+                update_fields=["check_out", "working_hours", "location"]
             )
-    
+
         else:
             raise serializers.ValidationError(
                 "Attendance already completed for today."
             )
-    
+
         serializer = self.get_serializer(attendance)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        return Response(serializer.data, status=status.HTTP_200_OK)   
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.select_related(
         "assigned_to",

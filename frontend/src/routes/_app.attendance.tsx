@@ -54,6 +54,34 @@ function toLocalISODate(date: Date) {
 
   return `${year}-${month}-${day}`;
 }
+function getCurrentPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not supported on this device."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+  });
+}
+
+async function getGpsCoords(): Promise<{ latitude: number; longitude: number }> {
+  try {
+    const position = await getCurrentPosition();
+    return {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+    };
+  } catch (err: any) {
+    if (err.code === 1) {
+      throw new Error("Location permission is required.");
+    }
+    throw new Error("Unable to fetch current location.");
+  }
+}
 function AttendancePage() {
   const currentUser = useCurrentUser();
 
@@ -106,35 +134,32 @@ function AttendancePage() {
 
   const checkIn = useMutation({
     mutationFn: async () => {
-      await api.post("/attendance/", {});
+      const { latitude, longitude } = await getGpsCoords();
+      await api.post("/attendance/", { latitude, longitude });
     },
-
     onSuccess: async () => {
-      await qc.refetchQueries({
-        queryKey: ["attendance"],
-      });
-
+      await qc.refetchQueries({ queryKey: ["attendance"] });
       toast.success("Checked In");
+    },
+    onError: (error: any) => {
+      const backendMessage = error.response?.data?.detail;
+      toast.error(backendMessage || error.message || "Check-in failed.");
     },
   });
 
   const checkOut = useMutation({
     mutationFn: async () => {
-      await api.post("/attendance/", {});
+      const { latitude, longitude } = await getGpsCoords();
+      await api.post("/attendance/", { latitude, longitude });
     },
-
     onSuccess: async () => {
-      await qc.refetchQueries({
-        queryKey: ["attendance"],
-      });
-
+      await qc.refetchQueries({ queryKey: ["attendance"] });
       toast.success("Checked Out");
     },
-
     onError: (error: any) => {
-      console.log(error.response?.data);
-      toast.error(JSON.stringify(error.response?.data));
-    }
+      const backendMessage = error.response?.data?.detail;
+      toast.error(backendMessage || error.message || "Check-out failed.");
+    },
   });
 
   const isEmployee = me?.role === "EMPLOYEE";

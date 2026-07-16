@@ -26,7 +26,10 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG") == "True"
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1"
+).split(",")
 
 
 # Application definition
@@ -149,3 +152,8 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
 }
+
+
+OFFICE_LATITUDE = float(os.getenv("OFFICE_LATITUDE", "23.009977"))
+OFFICE_LONGITUDE = float(os.getenv("OFFICE_LONGITUDE", "72.531335"))
+OFFICE_RADIUS_METERS = int(os.getenv("OFFICE_RADIUS_METERS", "100"))
