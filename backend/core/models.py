@@ -391,3 +391,122 @@ class Leave(models.Model):
 
     def __str__(self):
         return f"{self.employee} - {self.leave_type} ({self.start_date} to {self.end_date})"
+    
+
+
+# =========================================================
+# APPEND THIS BLOCK TO THE BOTTOM OF YOUR EXISTING models.py
+# (same file as Department / Employee / Task / Leave)
+# Do not create a new app — keep it in the same models.py
+# so it shares the existing Employee FK without cross-app imports.
+# =========================================================
+
+
+class Conversation(models.Model):
+
+    TYPE_CHOICES = [
+        ("DIRECT", "Direct"),
+        ("GROUP", "Group"),
+        ("EVERYONE", "Everyone"),
+    ]
+
+    conversation_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default="DIRECT",
+    )
+
+    # Optional display name — mainly used for GROUP conversations.
+    # DIRECT conversations derive their display name from the other
+    # participant on the frontend/serializer instead of storing one.
+    name = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+    )
+
+    created_by = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_conversations",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "conversations"
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"{self.get_conversation_type_display()} conversation #{self.pk}"
+
+
+class ConversationParticipant(models.Model):
+
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="participants",
+    )
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="conversation_memberships",
+    )
+
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    # Bumped whenever the participant reads the conversation.
+    # Used to compute unread counts — never trust the client for this,
+    # it's only ever set server-side.
+    last_read_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "conversation_participants"
+        unique_together = ("conversation", "employee")
+        ordering = ["joined_at"]
+
+    def __str__(self):
+        return f"{self.employee} in conversation #{self.conversation_id}"
+
+
+class Message(models.Model):
+
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+
+    sender = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="sent_messages",
+    )
+
+    message = models.TextField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    edited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    is_deleted = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "messages"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        preview = self.message[:30] if not self.is_deleted else "(deleted)"
+        return f"{self.sender} @ {self.created_at:%Y-%m-%d %H:%M} — {preview}"

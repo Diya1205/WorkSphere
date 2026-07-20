@@ -14,6 +14,9 @@ from .models import (
     Employee,
     Task,
     Leave,
+    Conversation,
+    ConversationParticipant,
+    Message,
 )
 from .serializers import (
     AttendanceSerializer,
@@ -24,11 +27,15 @@ from .serializers import (
     TaskSerializer,
     ProfileSerializer,
     LeaveSerializer, 
-    LeaveDecisionSerializer
+    LeaveDecisionSerializer,
+    ConversationSerializer,
+    ConversationCreateSerializer,
+    MessageSerializer,
 )
 from django.conf import settings
 from geopy.distance import geodesic
-
+from django.db import transaction
+from django.shortcuts import get_object_or_404
 
 def _validate_office_geofence(latitude, longitude):
     """
@@ -647,3 +654,294 @@ class LeaveViewSet(viewsets.ModelViewSet):
         leave.save(update_fields=update_fields)
 
         return Response(self.get_serializer(leave).data)
+    
+
+
+def _current_employee_or_404(request):
+    """
+    Every messaging endpoint needs an Employee row (participants and
+    senders are Employee FKs, matching ConversationParticipant.employee).
+    A bare Django superuser with no linked Employee can't participate —
+    same restriction ProfileView/LeaveViewSet already apply.
+    """
+    if not hasattr(request.user, "employee"):
+        return None
+    return request.user.employee
+
+
+class ConversationListCreateView(APIView):
+    """
+    GET  /api/messages/conversations/           -> conversations the current user belongs to
+    POST /api/messages/conversations/           -> create DIRECT / GROUP / EVERYONE conversation
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        employee = _current_employee_or_404(request)
+        if employee is None:
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        conversations = (
+            Conversation.objects.filter(participants__employee=employee)
+            .prefetch_related("participants__employee", "messages")
+            .distinct()
+            .order_by("-updated_at")
+        )
+
+        serializer = ConversationSerializer(
+            conversations, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
+    @transaction.atomic
+    def post(self, request):
+        employee = _current_employee_or_404(request)
+        if employee is None:
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        payload = ConversationCreateSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        conv_type = data["conversation_type"]
+
+        if conv_type == "DIRECT":
+            receiver = get_object_or_404(Employee, pk=data["receiver"])
+
+            if receiver.id == employee.id:
+                return Response(
+                    {"detail": "You cannot start a conversation with yourself."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Reuse an existing direct conversation between these two if one exists.
+            existing = (
+                Conversation.objects.filter(
+                    conversation_type="DIRECT", participants__employee=employee
+                )
+                .filter(participants__employee=receiver)
+                .distinct()
+                .first()
+            )
+            if existing:
+                serializer = ConversationSerializer(existing, context={"request": request})
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            conversation = Conversation.objects.create(
+                conversation_type="DIRECT", created_by=employee
+            )
+            ConversationParticipant.objects.bulk_create(
+                [
+                    ConversationParticipant(conversation=conversation, employee=employee),
+                    ConversationParticipant(conversation=conversation, employee=receiver),
+                ]
+            )
+
+        elif conv_type == "GROUP":
+            participant_ids = set(data["participants"]) | {employee.id}
+            members = Employee.objects.filter(id__in=participant_ids)
+
+            conversation = Conversation.objects.create(
+                conversation_type="GROUP",
+                name=data.get("name") or "",
+                created_by=employee,
+            )
+            ConversationParticipant.objects.bulk_create(
+                [ConversationParticipant(conversation=conversation, employee=m) for m in members]
+            )
+
+        else:  # EVERYONE
+            # No role filtering — every active employee, admin or not.
+            all_active = Employee.objects.filter(status="ACTIVE")
+
+            conversation = Conversation.objects.create(
+                conversation_type="EVERYONE", name="Everyone", created_by=employee
+            )
+            ConversationParticipant.objects.bulk_create(
+                [
+                    ConversationParticipant(conversation=conversation, employee=e)
+                    for e in all_active
+                ]
+            )
+
+        serializer = ConversationSerializer(conversation, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ConversationDetailView(APIView):
+    """GET /api/messages/conversations/{id}/"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        employee = _current_employee_or_404(request)
+        if employee is None:
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        conversation = get_object_or_404(
+            Conversation.objects.prefetch_related("participants__employee"), pk=pk
+        )
+
+        if not conversation.participants.filter(employee=employee).exists():
+            return Response(
+                {"detail": "You are not part of this conversation."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = ConversationSerializer(conversation, context={"request": request})
+        return Response(serializer.data)
+
+
+class ConversationMessagesView(APIView):
+    """
+    GET  /api/messages/conversations/{id}/messages/  -> oldest first, paginated
+    POST /api/messages/conversations/{id}/messages/   -> send a message
+    """
+
+    permission_classes = [IsAuthenticated]
+    PAGE_SIZE = 50
+
+    def _get_conversation_for_member(self, request, pk):
+        employee = _current_employee_or_404(request)
+        if employee is None:
+            return None, None, Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        conversation = get_object_or_404(Conversation, pk=pk)
+
+        if not conversation.participants.filter(employee=employee).exists():
+            return None, None, Response(
+                {"detail": "You are not part of this conversation."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return conversation, employee, None
+
+    def get(self, request, pk):
+        conversation, employee, error = self._get_conversation_for_member(request, pk)
+        if error:
+            return error
+
+        # Simple offset pagination via ?before_id= for "load older messages".
+        qs = conversation.messages.select_related("sender").order_by("-created_at")
+
+        before_id = request.query_params.get("before_id")
+        if before_id:
+            qs = qs.filter(id__lt=before_id)
+
+        page = list(qs[: self.PAGE_SIZE])
+        page.reverse()  # oldest first
+
+        # Mark as read up to now.
+        ConversationParticipant.objects.filter(
+            conversation=conversation, employee=employee
+        ).update(last_read_at=timezone.now())
+
+        serializer = MessageSerializer(page, many=True)
+        return Response(
+            {
+                "results": serializer.data,
+                "has_more": qs.count() > self.PAGE_SIZE,
+            }
+        )
+
+    def post(self, request, pk):
+        conversation, employee, error = self._get_conversation_for_member(request, pk)
+        if error:
+            return error
+
+        text = (request.data.get("message") or "").strip()
+        if not text:
+            return Response(
+                {"detail": "Message cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        message = Message.objects.create(
+            conversation=conversation, sender=employee, message=text
+        )
+        conversation.save(update_fields=[])  # touches updated_at via auto_now
+        Conversation.objects.filter(pk=conversation.pk).update(updated_at=timezone.now())
+
+        ConversationParticipant.objects.filter(
+            conversation=conversation, employee=employee
+        ).update(last_read_at=timezone.now())
+
+        serializer = MessageSerializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MessageDetailView(APIView):
+    """
+    PUT    /api/messages/{id}/  -> edit own message
+    DELETE /api/messages/{id}/  -> soft-delete own message
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, pk):
+        employee = _current_employee_or_404(request)
+        if employee is None:
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        message = get_object_or_404(Message, pk=pk)
+
+        if message.sender_id != employee.id:
+            return Response(
+                {"detail": "You can only edit your own messages."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if message.is_deleted:
+            return Response(
+                {"detail": "Deleted messages cannot be edited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        text = (request.data.get("message") or "").strip()
+        if not text:
+            return Response(
+                {"detail": "Message cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        message.message = text
+        message.edited_at = timezone.now()
+        message.save(update_fields=["message", "edited_at", "updated_at"])
+
+        return Response(MessageSerializer(message).data)
+
+    def delete(self, request, pk):
+        employee = _current_employee_or_404(request)
+        if employee is None:
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        message = get_object_or_404(Message, pk=pk)
+
+        if message.sender_id != employee.id:
+            return Response(
+                {"detail": "You can only delete your own messages."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        message.is_deleted = True
+        message.save(update_fields=["is_deleted", "updated_at"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

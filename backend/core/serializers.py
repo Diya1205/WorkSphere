@@ -10,6 +10,9 @@ from .models import (
     Employee,
     Task,
     Leave,
+    Conversation,          
+    ConversationParticipant,  
+    Message,
 )
 
 
@@ -295,26 +298,214 @@ class LeaveSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         start = attrs.get("start_date", getattr(self.instance, "start_date", None))
         end = attrs.get("end_date", getattr(self.instance, "end_date", None))
-    
+
         today = timezone.localdate()
-    
+
         if start and start < today:
             raise serializers.ValidationError(
                 {
                     "start_date": "You cannot apply leave for past dates."
                 }
             )
-    
+
         if start and end and start > end:
             raise serializers.ValidationError(
                 {
                     "end_date": "End date cannot be before start date."
                 }
             )
-    
+
         return attrs
 
 
 class LeaveDecisionSerializer(serializers.Serializer):
     """Used for approve/reject — admin_remarks is optional in both cases."""
     admin_remarks = serializers.CharField(required=False, allow_blank=True)
+
+
+
+
+class ParticipantSerializer(serializers.ModelSerializer):
+    """Lightweight employee summary used inside conversation payloads."""
+
+    employee_id = serializers.IntegerField(source="employee.id", read_only=True)
+    full_name = serializers.SerializerMethodField()
+    role = serializers.CharField(source="employee.role", read_only=True)
+    employee_code = serializers.CharField(source="employee.employee_code", read_only=True)
+    profile_photo = serializers.ImageField(source="employee.profile_photo", read_only=True)
+
+    class Meta:
+        model = ConversationParticipant
+        fields = [
+            "employee_id",
+            "full_name",
+            "role",
+            "employee_code",
+            "profile_photo",
+            "joined_at",
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.employee.first_name} {obj.employee.last_name}"
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_id = serializers.IntegerField(source="sender.id", read_only=True)
+    sender_name = serializers.SerializerMethodField()
+    sender_profile_photo = serializers.ImageField(
+        source="sender.profile_photo", read_only=True
+    )
+    is_edited = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = [
+            "id",
+            "conversation",
+            "sender_id",
+            "sender_name",
+            "sender_profile_photo",
+            "message",
+            "is_edited",
+            "is_deleted",
+            "created_at",
+            "updated_at",
+            "edited_at",
+        ]
+        read_only_fields = (
+            "conversation",
+            "created_at",
+            "updated_at",
+            "edited_at",
+            "is_deleted",
+        )
+
+    def get_sender_name(self, obj):
+        return f"{obj.sender.first_name} {obj.sender.last_name}"
+
+    def get_is_edited(self, obj):
+        return obj.edited_at is not None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.is_deleted:
+            data["message"] = "This message was deleted."
+        return data
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    """Used for conversation list + detail."""
+
+    participants = ParticipantSerializer(many=True, read_only=True)
+    display_name = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = [
+            "id",
+            "conversation_type",
+            "name",
+            "display_name",
+            "participants",
+            "last_message",
+            "unread_count",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("created_by", "created_at", "updated_at")
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}"
+        return None
+
+    def get_display_name(self, obj):
+        request = self.context.get("request")
+        current_employee = getattr(request.user, "employee", None) if request else None
+
+        if obj.conversation_type == "EVERYONE":
+            return obj.name or "Everyone"
+
+        if obj.conversation_type == "GROUP":
+            return obj.name or ", ".join(
+                f"{p.employee.first_name}" for p in obj.participants.all()[:4]
+            )
+
+        # DIRECT — show the other participant's name
+        if current_employee:
+            other = next(
+                (p for p in obj.participants.all() if p.employee_id != current_employee.id),
+                None,
+            )
+            if other:
+                return f"{other.employee.first_name} {other.employee.last_name}"
+
+        return obj.name or "Conversation"
+
+    def get_last_message(self, obj):
+        last = obj.messages.order_by("-created_at").first()
+        if not last:
+            return None
+        return {
+            "id": last.id,
+            "message": "This message was deleted." if last.is_deleted else last.message,
+            "sender_id": last.sender_id,
+            "sender_name": f"{last.sender.first_name} {last.sender.last_name}",
+            "created_at": last.created_at,
+        }
+
+    def get_unread_count(self, obj):
+        request = self.context.get("request")
+        current_employee = getattr(request.user, "employee", None) if request else None
+        if not current_employee:
+            return 0
+
+        membership = next(
+            (p for p in obj.participants.all() if p.employee_id == current_employee.id),
+            None,
+        )
+        if not membership:
+            return 0
+
+        qs = obj.messages.filter(is_deleted=False).exclude(sender=current_employee)
+        if membership.last_read_at:
+            qs = qs.filter(created_at__gt=membership.last_read_at)
+        return qs.count()
+
+
+class ConversationCreateSerializer(serializers.Serializer):
+    """
+    Handles all three creation payloads:
+      - Individual: {"conversation_type": "DIRECT", "receiver": <employee_id>}
+      - Group:      {"conversation_type": "GROUP", "participants": [<id>, <id>, ...], "name": "optional"}
+      - Everyone:   {"conversation_type": "EVERYONE"}
+    """
+
+    conversation_type = serializers.ChoiceField(choices=Conversation.TYPE_CHOICES)
+    receiver = serializers.IntegerField(required=False)
+    participants = serializers.ListField(
+        child=serializers.IntegerField(), required=False
+    )
+    name = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        conv_type = attrs["conversation_type"]
+
+        if conv_type == "DIRECT" and not attrs.get("receiver"):
+            raise serializers.ValidationError(
+                {"receiver": "receiver is required for a direct conversation."}
+            )
+
+        if conv_type == "GROUP":
+            participants = attrs.get("participants") or []
+            if len(participants) < 2:
+                raise serializers.ValidationError(
+                    {"participants": "A group needs at least 2 other participants."}
+                )
+
+        return attrs

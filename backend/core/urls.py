@@ -8,9 +8,14 @@ from .views import (
     DesignationViewSet,
     EmployeeViewSet,
     LeaveViewSet,
+    MessageDetailView,
     ProfileView,
     TaskViewSet,
     DashboardView,
+    ConversationListCreateView,
+    ConversationDetailView,
+    ConversationMessagesView,
+    MessageDetailView,
 )
 
 router = DefaultRouter()
@@ -27,4 +32,28 @@ urlpatterns = [
     path("", include(router.urls)),
     path("profile/", ProfileView.as_view(), name="profile"),
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
+    path(
+        "messages/conversations/",
+        ConversationListCreateView.as_view(),
+        name="conversation-list-create",
+    ),
+    
+    path(
+        "messages/conversations/<int:pk>/",
+        ConversationDetailView.as_view(),
+        name="conversation-detail",
+    ),
+    
+    path(
+        "messages/conversations/<int:pk>/messages/",
+        ConversationMessagesView.as_view(),
+        name="conversation-messages",
+    ),
+    
+    path(
+        "messages/<int:pk>/",
+        MessageDetailView.as_view(),
+        name="message-detail",
+    ),
 ]
+
