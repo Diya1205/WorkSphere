@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, X, Plus, Filter, CalendarDays, MessageSquare, Loader2 } from "lucide-react";
+import { Check, X, Plus, Filter, MessageSquare, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/hrms/PageHeader";
 import { Avatar } from "@/components/hrms/Avatar";
 import { StatusChip } from "@/components/hrms/StatusChip";
@@ -125,17 +125,15 @@ function LeavePage() {
         breadcrumbs={[{ label: "Home" }, { label: "Time" }, { label: "Leave" }]}
         actions={
           <>
-            {canApprove && (
-              <button className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-accent">
-                <CalendarDays className="h-4 w-4" /> Team calendar
+            {!canApprove && (
+              <button
+                onClick={() => setShowApply(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
+              >
+                <Plus className="h-4 w-4" />
+                Apply leave
               </button>
             )}
-            <button
-              onClick={() => setShowApply(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
-            >
-              <Plus className="h-4 w-4" /> Apply leave
-            </button>
           </>
         }
       />
