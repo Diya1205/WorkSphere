@@ -25,7 +25,7 @@ import {
   type Conversation,
   type Message,
   type EmployeeOption,
-} from "@/services/messageService";
+} from "@/services/messageservice";
 
 export const Route = createFileRoute("/_app/messages")({
   component: MessagesPage,
