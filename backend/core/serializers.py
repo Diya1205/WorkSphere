@@ -9,6 +9,7 @@ from .models import (
     Designation,
     Employee,
     Task,
+    Leave,
 )
 
 
@@ -114,7 +115,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-    
+
     def get_employee_name(self, obj):
         return f"{obj.employee.first_name} {obj.employee.last_name}"
 
@@ -243,4 +244,77 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
+
+
+
+
+class LeaveSerializer(serializers.ModelSerializer):
+    employee_name = serializers.SerializerMethodField()
+    employee_code = serializers.CharField(source="employee.employee_code", read_only=True)
+    approved_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Leave
+        fields = [
+            "id",
+            "employee",
+            "employee_name",
+            "employee_code",
+            "leave_type",
+            "start_date",
+            "end_date",
+            "days",
+            "reason",
+            "status",
+            "applied_at",
+            "approved_by",
+            "approved_by_name",
+            "approved_at",
+            "admin_remarks",
+            "updated_at",
+        ]
+        read_only_fields = (
+            "employee",
+            "days",
+            "status",
+            "applied_at",
+            "approved_by",
+            "approved_at",
+            "admin_remarks",
+            "updated_at",
+        )
+
+    def get_employee_name(self, obj):
+        return f"{obj.employee.first_name} {obj.employee.last_name}"
+
+    def get_approved_by_name(self, obj):
+        if obj.approved_by:
+            return obj.approved_by.get_full_name() or obj.approved_by.username
+        return None
+
+    def validate(self, attrs):
+        start = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        end = attrs.get("end_date", getattr(self.instance, "end_date", None))
     
+        today = timezone.localdate()
+    
+        if start and start < today:
+            raise serializers.ValidationError(
+                {
+                    "start_date": "You cannot apply leave for past dates."
+                }
+            )
+    
+        if start and end and start > end:
+            raise serializers.ValidationError(
+                {
+                    "end_date": "End date cannot be before start date."
+                }
+            )
+    
+        return attrs
+
+
+class LeaveDecisionSerializer(serializers.Serializer):
+    """Used for approve/reject — admin_remarks is optional in both cases."""
+    admin_remarks = serializers.CharField(required=False, allow_blank=True)

@@ -13,6 +13,7 @@ from .models import (
     Designation,
     Employee,
     Task,
+    Leave,
 )
 from .serializers import (
     AttendanceSerializer,
@@ -22,6 +23,8 @@ from .serializers import (
     LoginSerializer,
     TaskSerializer,
     ProfileSerializer,
+    LeaveSerializer, 
+    LeaveDecisionSerializer
 )
 from django.conf import settings
 from geopy.distance import geodesic
@@ -477,3 +480,170 @@ class DashboardView(APIView):
                 )
             ),
         }
+    
+
+
+def _is_admin(user):
+    return user.is_superuser or (
+        hasattr(user, "employee") and user.employee.role == "ADMIN"
+    )
+
+
+class LeaveViewSet(viewsets.ModelViewSet):
+    serializer_class = LeaveSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Leave.objects.select_related(
+            "employee",
+            "employee__department",
+            "employee__designation",
+            "approved_by",
+        )
+
+        if _is_admin(self.request.user):
+            return queryset
+
+        return queryset.filter(employee=self.request.user.employee)
+
+    def create(self, request, *args, **kwargs):
+        if not hasattr(request.user, "employee"):
+            return Response(
+                {"detail": "No employee profile linked to this account."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        employee = request.user.employee
+        start_date = serializer.validated_data["start_date"]
+        end_date = serializer.validated_data["end_date"]
+
+        overlap_exists = Leave.objects.filter(
+            employee=employee,
+            status__in=["PENDING", "APPROVED"],
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+        ).exists()
+
+        if overlap_exists:
+            return Response(
+                {"detail": "You already have a leave request overlapping these dates."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save(employee=employee, status="PENDING")
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        leave = self.get_object()
+
+        is_owner = (
+            hasattr(request.user, "employee")
+            and leave.employee == request.user.employee
+        )
+
+        if not is_owner:
+            return Response(
+                {"detail": "You cannot edit another employee's leave request."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if leave.status != "PENDING":
+            return Response(
+                {"detail": "Only pending leave requests can be edited."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        leave = self.get_object()
+
+        is_owner = (
+            hasattr(request.user, "employee")
+            and leave.employee == request.user.employee
+        )
+
+        if not is_owner:
+            return Response(
+                {"detail": "You cannot delete another employee's leave request."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if leave.status != "PENDING":
+            return Response(
+                {"detail": "Only pending leave requests can be deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().destroy(request, *args, **kwargs)
+
+    def _decide(self, request, new_status):
+        if not _is_admin(request.user):
+            return Response(
+                {"detail": "Only admins can perform this action."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        leave = self.get_object()
+
+        if leave.status != "PENDING":
+            return Response(
+                {"detail": "Only pending leave requests can be decided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        decision_serializer = LeaveDecisionSerializer(data=request.data)
+        decision_serializer.is_valid(raise_exception=True)
+
+        leave.status = new_status
+        leave.approved_by = request.user
+        leave.approved_at = timezone.now()
+        leave.admin_remarks = decision_serializer.validated_data.get("admin_remarks", "")
+        leave.save(update_fields=["status", "approved_by", "approved_at", "admin_remarks"])
+
+        return Response(self.get_serializer(leave).data)
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        return self._decide(request, "APPROVED")
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        return self._decide(request, "REJECTED")
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        leave = self.get_object()
+
+        is_owner = (
+            hasattr(request.user, "employee")
+            and leave.employee == request.user.employee
+        )
+
+        if not (is_owner or _is_admin(request.user)):
+            return Response(
+                {"detail": "You cannot cancel this leave request."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if leave.status not in ["PENDING", "APPROVED"]:
+            return Response(
+                {"detail": "Only pending or approved leave requests can be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        leave.status = "CANCELLED"
+        update_fields = ["status"]
+
+        if _is_admin(request.user):
+            leave.approved_by = request.user
+            leave.approved_at = timezone.now()
+            update_fields += ["approved_by", "approved_at"]
+
+        leave.save(update_fields=update_fields)
+
+        return Response(self.get_serializer(leave).data)

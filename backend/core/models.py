@@ -324,3 +324,70 @@ class Task(models.Model):
     def __str__(self):
         return f"{self.task_code} - {self.title}"
     
+
+class Leave(models.Model):
+
+    LEAVE_TYPE_CHOICES = [
+        ("SICK", "Sick Leave"),
+        ("CASUAL", "Casual Leave"),
+        ("EMERGENCY", "Emergency Leave"),
+        ("PERSONAL", "Personal Leave"),
+    ]
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name="leaves",
+    )
+
+    leave_type = models.CharField(
+        max_length=20,
+        choices=LEAVE_TYPE_CHOICES,
+    )
+
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    # Always derived from start_date/end_date in save(); never accepted from the client.
+    days = models.PositiveIntegerField(default=0, editable=False)
+
+    reason = models.TextField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+    )
+
+    applied_at = models.DateTimeField(auto_now_add=True)
+
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_leaves",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    admin_remarks = models.TextField(blank=True, null=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "leaves"
+        ordering = ["-applied_at"]
+
+    def save(self, *args, **kwargs):
+        if self.start_date and self.end_date:
+            self.days = (self.end_date - self.start_date).days + 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.employee} - {self.leave_type} ({self.start_date} to {self.end_date})"
