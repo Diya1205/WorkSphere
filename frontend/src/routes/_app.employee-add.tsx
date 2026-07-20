@@ -17,7 +17,6 @@ export const Route = createFileRoute("/_app/employee-add")({
     }),
 });
 
-
 interface Department {
     id: number;
     name: string;
@@ -31,11 +30,12 @@ interface Designation {
     description: string;
     is_active: boolean;
 }
-const employmentStatuses = [
-    "ACTIVE",
-    "INACTIVE",
-    "RESIGNED",
-] as const;
+const employmentStatuses = ["ACTIVE", "INACTIVE", "RESIGNED"] as const;
+
+// CHANGED: mirrors Employee.NON_EMPLOYEE_ROLES on the backend.
+// Add more role strings here later (e.g. "FOUNDER") — nothing else
+// in this file needs to change when you do.
+const NON_EMPLOYEE_ROLES = new Set(["ADMIN"]);
 
 interface FormState {
     firstName: string;
@@ -56,7 +56,6 @@ interface FormState {
     city: string;
     state: string;
     country: string;
-
 }
 
 const initialForm: FormState = {
@@ -78,18 +77,26 @@ const initialForm: FormState = {
     city: "",
     state: "",
     country: "India",
-
 };
 
-const requiredFields: Array<keyof FormState> = [
+// CHANGED: only fields that apply to EVERY role. Employee-only
+// requirements (joiningDate/department/designation) are added
+// dynamically based on the selected role — see getRequiredFields().
+const baseRequiredFields: Array<keyof FormState> = [
     "firstName",
     "lastName",
     "email",
     "phone",
+];
+
+const employeeOnlyRequiredFields: Array<keyof FormState> = [
     "joiningDate",
     "department",
     "designation",
 ];
+
+const getRequiredFields = (isEmployeeRole: boolean): Array<keyof FormState> =>
+    isEmployeeRole ? [...baseRequiredFields, ...employeeOnlyRequiredFields] : baseRequiredFields;
 
 const inputClass =
     "h-10 w-full rounded-md border border-border bg-surface px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-background/60 disabled:text-muted-foreground";
@@ -104,7 +111,6 @@ const calculateAge = (dob: string): number => {
     const today = new Date();
 
     let age = today.getFullYear() - birthDate.getFullYear();
-
     const monthDifference = today.getMonth() - birthDate.getMonth();
 
     if (
@@ -193,6 +199,9 @@ function AddEmployeePage() {
     const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // CHANGED: single source of truth for "does this role need employee fields".
+    const isEmployeeRole = !NON_EMPLOYEE_ROLES.has(form.role);
+
     const setField = (
         field: keyof FormState,
         value: FormState[keyof FormState]
@@ -203,17 +212,41 @@ function AddEmployeePage() {
         }
     };
 
+    // CHANGED: when role flips to Admin, immediately clear whatever was
+    // typed into employee-only fields so nothing stale gets submitted
+    // if the user flips back and forth, and clear any errors on them.
+    const handleRoleChange = (role: string) => {
+        setForm((prev) => ({ ...prev, role }));
+
+        if (NON_EMPLOYEE_ROLES.has(role)) {
+            setForm((prev) => ({
+                ...prev,
+                role,
+                joiningDate: "",
+                department: "",
+                designation: "",
+                ctc: "",
+                employmentStatus: "ACTIVE",
+            }));
+            setErrors((prev) => ({
+                ...prev,
+                joiningDate: undefined,
+                department: undefined,
+                designation: undefined,
+                ctc: undefined,
+            }));
+        }
+    };
+
     const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-
         if (!file) return;
 
         setProfilePhoto(file);
-
         const url = URL.createObjectURL(file);
-
         setPhotoPreview(url);
     };
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -231,6 +264,7 @@ function AddEmployeePage() {
 
         fetchData();
     }, []);
+
     const removePhoto = () => {
         setPhotoPreview(null);
         setProfilePhoto(null);
@@ -240,7 +274,8 @@ function AddEmployeePage() {
     const validate = () => {
         const nextErrors: Partial<Record<keyof FormState, string>> = {};
 
-        requiredFields.forEach((field) => {
+        // CHANGED: required fields depend on role now.
+        getRequiredFields(isEmployeeRole).forEach((field) => {
             const value = form[field];
 
             if (
@@ -253,41 +288,27 @@ function AddEmployeePage() {
             }
         });
 
-        // First Name
-        if (form.firstName) {
-            if (!NAME_REGEX.test(form.firstName.trim())) {
-                nextErrors.firstName = "Only alphabets and spaces are allowed";
-            }
+        if (form.firstName && !NAME_REGEX.test(form.firstName.trim())) {
+            nextErrors.firstName = "Only alphabets and spaces are allowed";
         }
 
-        // Last Name
-        if (form.lastName) {
-            if (!NAME_REGEX.test(form.lastName.trim())) {
-                nextErrors.lastName = "Only alphabets and spaces are allowed";
-            }
+        if (form.lastName && !NAME_REGEX.test(form.lastName.trim())) {
+            nextErrors.lastName = "Only alphabets and spaces are allowed";
         }
 
-        // Email
         if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) {
             nextErrors.email = "Enter a valid email address";
         }
 
-        // Phone
         if (form.phone && !INDIAN_PHONE_REGEX.test(form.phone)) {
-            nextErrors.phone =
-                "Enter a valid 10-digit Indian mobile number";
+            nextErrors.phone = "Enter a valid 10-digit Indian mobile number";
         }
 
-        // Emergency Contact
-        if (
-            form.emergencyContact &&
-            !INDIAN_PHONE_REGEX.test(form.emergencyContact)
-        ) {
-            nextErrors.emergencyContact =
-                "Enter a valid 10-digit Indian mobile number";
+        if (form.emergencyContact && !INDIAN_PHONE_REGEX.test(form.emergencyContact)) {
+            nextErrors.emergencyContact = "Enter a valid 10-digit Indian mobile number";
         }
 
-        // DOB
+        // DOB validation applies to everyone (employees and admins alike).
         if (form.dob) {
             if (isFutureDate(form.dob)) {
                 nextErrors.dob = "Date of birth cannot be in the future";
@@ -296,24 +317,21 @@ function AddEmployeePage() {
             }
         }
 
-        // Joining Date
-        if (form.joiningDate && isFutureDate(form.joiningDate)) {
-            nextErrors.joiningDate =
-                "Joining date cannot be a future date";
-        }
+        // CHANGED: employee-only validations only run for employee roles.
+        if (isEmployeeRole) {
+            if (form.joiningDate && isFutureDate(form.joiningDate)) {
+                nextErrors.joiningDate = "Joining date cannot be a future date";
+            }
 
-        // Annual CTC
-        if (form.ctc) {
-            const ctc = Number(form.ctc);
-
-            if (Number.isNaN(ctc) || ctc <= 0) {
-                nextErrors.ctc =
-                    "Annual CTC must be greater than 0";
+            if (form.ctc) {
+                const ctc = Number(form.ctc);
+                if (Number.isNaN(ctc) || ctc <= 0) {
+                    nextErrors.ctc = "Annual CTC must be greater than 0";
+                }
             }
         }
 
         setErrors(nextErrors);
-
         return Object.keys(nextErrors).length === 0;
     };
 
@@ -339,20 +357,23 @@ function AddEmployeePage() {
                 formData.append("date_of_birth", form.dob);
             }
 
-            formData.append("joining_date", form.joiningDate);
-
-            formData.append("department", String(form.department));
-            formData.append("designation", String(form.designation));
-
-            formData.append("annual_ctc", form.ctc || "0");
-
             formData.append("address", form.address);
             formData.append("city", form.city);
             formData.append("state", form.state);
             formData.append("country", form.country);
-
-            formData.append("status", form.employmentStatus);
             formData.append("role", form.role);
+
+            // CHANGED: employee-only fields are only sent for employee roles.
+            // Admins never send employee_code, joining_date, department,
+            // designation, annual_ctc, or status — matching the backend,
+            // which also ignores/strips them for non-employee roles.
+            if (isEmployeeRole) {
+                formData.append("joining_date", form.joiningDate);
+                formData.append("department", String(form.department));
+                formData.append("designation", String(form.designation));
+                formData.append("annual_ctc", form.ctc || "0");
+                formData.append("status", form.employmentStatus);
+            }
 
             if (profilePhoto) {
                 formData.append("profile_photo", profilePhoto);
@@ -360,7 +381,7 @@ function AddEmployeePage() {
 
             await createEmployee(formData);
 
-            alert("Employee created successfully!");
+            alert(isEmployeeRole ? "Employee created successfully!" : "Admin created successfully!");
 
             window.location.href = "/employees";
         } catch (error: any) {
@@ -369,7 +390,7 @@ function AddEmployeePage() {
             if (error.response?.data) {
                 alert(JSON.stringify(error.response.data));
             } else {
-                alert("Failed to create employee.");
+                alert("Failed to save.");
             }
         } finally {
             setLoading(false);
@@ -380,7 +401,7 @@ function AddEmployeePage() {
         <>
             <PageHeader
                 title="Add Employee"
-                description="Create a new employee profile"
+                description="Create a new employee or admin profile"
                 breadcrumbs={[
                     { label: "Home" },
                     { label: "People" },
@@ -406,15 +427,18 @@ function AddEmployeePage() {
                         className="lg:col-span-2"
                     >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <Field label="Employee Code" htmlFor="employeeCode">
-                                <input
-                                    id="employeeCode"
-                                    type="text"
-                                    disabled
-                                    placeholder="Auto Generated"
-                                    className={inputClass}
-                                />
-                            </Field>
+                            {/* CHANGED: Employee Code is employee-only, hidden for admins */}
+                            {isEmployeeRole && (
+                                <Field label="Employee Code" htmlFor="employeeCode">
+                                    <input
+                                        id="employeeCode"
+                                        type="text"
+                                        disabled
+                                        placeholder="Auto Generated"
+                                        className={inputClass}
+                                    />
+                                </Field>
+                            )}
 
                             <Field label="First Name" required htmlFor="firstName" error={errors.firstName}>
                                 <input
@@ -459,12 +483,9 @@ function AddEmployeePage() {
                                     className={cn(inputClass, errors.phone && errorInputClass)}
                                 />
                             </Field>
+
                             <Field
-                                label={
-                                    form.maritalStatus === "MARRIED"
-                                        ? "Spouse Contact Number"
-                                        : "Parent Contact Number"
-                                }
+                                label={form.maritalStatus === "MARRIED" ? "Spouse Contact Number" : "Parent Contact Number"}
                                 htmlFor="emergencyContact"
                                 error={errors.emergencyContact}
                             >
@@ -505,11 +526,7 @@ function AddEmployeePage() {
                                 </select>
                             </Field>
 
-                            <Field
-                                label="Date of Birth"
-                                htmlFor="dob"
-                                error={errors.dob}
-                            >
+                            <Field label="Date of Birth" htmlFor="dob" error={errors.dob}>
                                 <input
                                     id="dob"
                                     type="date"
@@ -564,111 +581,107 @@ function AddEmployeePage() {
                     </CardSection>
 
                     {/* Employment Information */}
-                    <CardSection title="Employment Information" description="Role, department and compensation">
+                    <CardSection
+                        title="Employment Information"
+                        description={isEmployeeRole ? "Role, department and compensation" : "Role assignment"}
+                    >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <Field
-                                label="Joining Date"
-                                htmlFor="joiningDate"
-                                error={errors.joiningDate}
-                            >
-                                <input
-                                    id="joiningDate"
-                                    type="date"
-                                    value={form.joiningDate}
-                                    onChange={(e) => setField("joiningDate", e.target.value)}
-                                    className={cn(inputClass, "tabular")}
-                                />
-                            </Field>
-
-                            <Field label="Department" htmlFor="department">
-                                <select
-                                    id="department"
-                                    value={form.department}
-                                    onChange={(e) =>
-                                        setForm((prev) => ({
-                                            ...prev,
-                                            department: e.target.value ? Number(e.target.value) : "",
-                                        }))
-                                    }
-                                    className={inputClass}
-                                >
-                                    <option value="">Select department</option>
-                                    {departments.map((department) => (
-                                        <option
-                                            key={department.id}
-                                            value={department.id}
-                                        >
-                                            {department.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </Field>
-
-                            <Field label="Designation" htmlFor="designation">
-                                <select
-                                    id="designation"
-                                    value={form.designation}
-                                    onChange={(e) =>
-                                        setForm((prev) => ({
-                                            ...prev,
-                                            designation: e.target.value ? Number(e.target.value) : "",
-                                        }))
-                                    }
-                                    className={inputClass}
-                                >
-                                    <option value="">Select designation</option>
-                                    {designations.map((designation) => (
-                                        <option
-                                            key={designation.id}
-                                            value={designation.id}
-                                        >
-                                            {designation.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </Field>
-
-                            <Field
-                                label="Annual CTC"
-                                htmlFor="ctc"
-                                error={errors.ctc}
-                            >
-                                <input
-                                    id="ctc"
-                                    type="number"
-                                    min={0}
-                                    value={form.ctc}
-                                    onChange={(e) => setField("ctc", e.target.value)}
-                                    placeholder="e.g. 1200000"
-                                    className={cn(inputClass, "tabular")}
-                                />
-                            </Field>
-
-                            <Field label="Employment Status" htmlFor="employmentStatus" className="sm:col-span-2">
-                                <select
-                                    id="employmentStatus"
-                                    value={form.employmentStatus}
-                                    onChange={(e) => setField("employmentStatus", e.target.value)}
-                                    className={inputClass}
-                                >
-                                    {employmentStatuses.map((status) => (
-                                        <option key={status} value={status}>
-                                            {status.charAt(0) + status.slice(1).toLowerCase()}
-                                        </option>
-                                    ))}
-                                </select>
-                            </Field>
-                            <Field label="Role" required htmlFor="role">
+                            {/* Role is always visible — it drives everything else */}
+                            <Field label="Role" required htmlFor="role" className="sm:col-span-2">
                                 <select
                                     id="role"
                                     value={form.role}
-                                    onChange={(e) => setField("role", e.target.value)}
+                                    onChange={(e) => handleRoleChange(e.target.value)}
                                     className={inputClass}
                                 >
                                     <option value="EMPLOYEE">Employee</option>
                                     <option value="ADMIN">Admin</option>
                                 </select>
                             </Field>
+
+                            {/* CHANGED: everything below is employee-only, hidden immediately for Admin */}
+                            {isEmployeeRole && (
+                                <>
+                                    <Field label="Joining Date" required htmlFor="joiningDate" error={errors.joiningDate}>
+                                        <input
+                                            id="joiningDate"
+                                            type="date"
+                                            value={form.joiningDate}
+                                            onChange={(e) => setField("joiningDate", e.target.value)}
+                                            className={cn(inputClass, "tabular")}
+                                        />
+                                    </Field>
+
+                                    <Field label="Department" required htmlFor="department" error={errors.department}>
+                                        <select
+                                            id="department"
+                                            value={form.department}
+                                            onChange={(e) =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    department: e.target.value ? Number(e.target.value) : "",
+                                                }))
+                                            }
+                                            className={inputClass}
+                                        >
+                                            <option value="">Select department</option>
+                                            {departments.map((department) => (
+                                                <option key={department.id} value={department.id}>
+                                                    {department.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </Field>
+
+                                    <Field label="Designation" required htmlFor="designation" error={errors.designation}>
+                                        <select
+                                            id="designation"
+                                            value={form.designation}
+                                            onChange={(e) =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    designation: e.target.value ? Number(e.target.value) : "",
+                                                }))
+                                            }
+                                            className={inputClass}
+                                        >
+                                            <option value="">Select designation</option>
+                                            {designations.map((designation) => (
+                                                <option key={designation.id} value={designation.id}>
+                                                    {designation.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </Field>
+
+                                    <Field label="Annual CTC" htmlFor="ctc" error={errors.ctc}>
+                                        <input
+                                            id="ctc"
+                                            type="number"
+                                            min={0}
+                                            value={form.ctc}
+                                            onChange={(e) => setField("ctc", e.target.value)}
+                                            placeholder="e.g. 1200000"
+                                            className={cn(inputClass, "tabular")}
+                                        />
+                                    </Field>
+
+                                    <Field label="Employment Status" htmlFor="employmentStatus" className="sm:col-span-2">
+                                        <select
+                                            id="employmentStatus"
+                                            value={form.employmentStatus}
+                                            onChange={(e) => setField("employmentStatus", e.target.value)}
+                                            className={inputClass}
+                                        >
+                                            {employmentStatuses.map((status) => (
+                                                <option key={status} value={status}>
+                                                    {status.charAt(0) + status.slice(1).toLowerCase()}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </Field>
+                                </>
+                            )}
                         </div>
                     </CardSection>
 
@@ -719,8 +732,6 @@ function AddEmployeePage() {
                             </Field>
                         </div>
                     </CardSection>
-
-
                 </div>
 
                 {/* Actions */}
@@ -736,7 +747,7 @@ function AddEmployeePage() {
                         disabled={loading}
                         className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
                     >
-                        {loading ? "Saving..." : "Save Employee"}
+                        {loading ? "Saving..." : "Save"}
                     </button>
                 </div>
             </form>

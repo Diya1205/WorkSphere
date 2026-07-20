@@ -36,6 +36,11 @@ class Designation(models.Model):
 
 class Employee(models.Model):
 
+    # Roles that represent organization users, not employees.
+    # Add more here later (e.g. "FOUNDER", "OFFICE_MANAGER", "SUPER_ADMIN")
+    # — no other code needs to change when you do.
+    NON_EMPLOYEE_ROLES = {"ADMIN"}
+
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),
         ("INACTIVE", "Inactive"),
@@ -54,102 +59,51 @@ class Employee(models.Model):
         ("SINGLE", "Single"),
         ("MARRIED", "Married"),
     ]
+
     employee_code = models.CharField(
         max_length=20,
         unique=True,
-        blank=True,
+        null=True,      # CHANGED: was blank=True only. Admins get no code,
+        blank=True,     # NULL (unlike "") doesn't collide with the unique constraint.
     )
     user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="employee",
+        User, on_delete=models.CASCADE, null=True, blank=True, related_name="employee",
     )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=15)
-    emergency_contact = models.CharField(
-        max_length=15,
-        blank=True,
-        null=True,
-    )
-    profile_photo = models.ImageField(
-        upload_to="employees/",
-        blank=True,
-        null=True,
-    )
+    emergency_contact = models.CharField(max_length=15, blank=True, null=True)
+    profile_photo = models.ImageField(upload_to="employees/", blank=True, null=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
+    marital_status = models.CharField(max_length=10, choices=MARITAL_STATUS_CHOICES, default="SINGLE")
+    date_of_birth = models.DateField(blank=True, null=True)
 
-    gender = models.CharField(
-        max_length=10,
-        choices=GENDER_CHOICES,
-        blank=True,
-        null=True,
-    )
-    marital_status = models.CharField(
-        max_length=10,
-        choices=MARITAL_STATUS_CHOICES,
-        default="SINGLE",
-    )
-    date_of_birth = models.DateField(
-        blank=True,
-        null=True,
-    )
+    # CHANGED: no longer required at the DB level — admins don't have one.
+    joining_date = models.DateField(null=True, blank=True)
 
-    joining_date = models.DateField()
-
+    # CHANGED: nullable — admins have no department/designation.
     department = models.ForeignKey(
-        Department,
-        on_delete=models.PROTECT,
-        related_name="employees",
+        Department, on_delete=models.PROTECT, related_name="employees",
+        null=True, blank=True,
     )
-
     designation = models.ForeignKey(
-        Designation,
-        on_delete=models.PROTECT,
-        related_name="employees",
+        Designation, on_delete=models.PROTECT, related_name="employees",
+        null=True, blank=True,
     )
 
     annual_ctc = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=0,
+        max_digits=12, decimal_places=2, default=0, null=True, blank=True,
     )
 
-    address = models.TextField(
-        blank=True,
-        null=True,
-    )
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    country = models.CharField(max_length=100, default="India")
 
-    city = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ACTIVE")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="EMPLOYEE")
 
-    state = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-    )
-
-    country = models.CharField(
-        max_length=100,
-        default="India",
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="ACTIVE",
-    )
-    role = models.CharField(
-        max_length=20,
-        choices=ROLE_CHOICES,
-        default="EMPLOYEE",
-    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -157,20 +111,20 @@ class Employee(models.Model):
         db_table = "employees"
         ordering = ["first_name"]
 
+    def is_employee_role(self) -> bool:
+        return self.role not in self.NON_EMPLOYEE_ROLES
+
     def save(self, *args, **kwargs):
-
         is_new = self.pk is None
-
         super().save(*args, **kwargs)
 
-        if is_new and not self.employee_code:
+        # CHANGED: only real employees get an E-XXX code.
+        if is_new and not self.employee_code and self.is_employee_role():
             self.employee_code = f"E-{self.pk}"
             super().save(update_fields=["employee_code"])
 
-
     def __str__(self):
-        return f"{self.employee_code} - {self.first_name} {self.last_name}"
-    
+        return f"{self.employee_code or self.role} - {self.first_name} {self.last_name}"  
     
 class Attendance(models.Model):
 

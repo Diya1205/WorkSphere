@@ -29,54 +29,78 @@ class DesignationSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    department_name = serializers.CharField(
-        source="department.name",
-        read_only=True,
-    )
-
-    designation_name = serializers.CharField(
-        source="designation.name",
-        read_only=True,
-    )
+    department_name = serializers.CharField(source="department.name", read_only=True)
+    designation_name = serializers.CharField(source="designation.name", read_only=True)
 
     class Meta:
         model = Employee
         fields = "__all__"
+        read_only_fields = ("user", "employee_code", "created_at", "updated_at")
 
-        read_only_fields = (
-            "user",
-            "employee_code",
-            "created_at",
-            "updated_at",
-        )
+    def validate(self, attrs):
+        role = attrs.get("role", getattr(self.instance, "role", "EMPLOYEE"))
+        is_employee_role = role not in Employee.NON_EMPLOYEE_ROLES
+        today = timezone.localdate()
+
+        if is_employee_role:
+            # Employee-track roles require these fields.
+            errors = {}
+            for field in ("department", "designation", "joining_date"):
+                value = attrs.get(field, getattr(self.instance, field, None))
+                if not value:
+                    errors[field] = "This field is required."
+            if errors:
+                raise serializers.ValidationError(errors)
+
+            joining_date = attrs.get("joining_date")
+            if joining_date and joining_date > today:
+                raise serializers.ValidationError(
+                    {"joining_date": "Joining date cannot be in the future."}
+                )
+        else:
+            # Admins: strip employee-only fields so nothing leaks through,
+            # even if the client sent them.
+            for field in ("department", "designation", "joining_date", "annual_ctc"):
+                attrs.pop(field, None)
+
+        dob = attrs.get("date_of_birth", getattr(self.instance, "date_of_birth", None))
+        if dob:
+            if dob > today:
+                raise serializers.ValidationError(
+                    {"date_of_birth": "Date of birth cannot be in the future."}
+                )
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age < 18:
+                raise serializers.ValidationError(
+                    {"date_of_birth": "Employee must be at least 18 years old."}
+                )
+
+        return attrs
 
     @transaction.atomic
     def create(self, validated_data):
-
         email = validated_data["email"]
 
         if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError(
-                {
-                    "email": "Email already exists."
-                }
-            )
+            raise serializers.ValidationError({"email": "Email already exists."})
 
+        default_password = (
+            "Admin@123"
+            if validated_data["role"] in Employee.NON_EMPLOYEE_ROLES
+            else "Welcome@123"
+        )
+        
         user = User.objects.create_user(
             username=email,
             email=email,
-            password="Welcome@123",
+            password=default_password,
             first_name=validated_data["first_name"],
             last_name=validated_data["last_name"],
         )
 
-        employee = Employee.objects.create(
-            user=user,
-            **validated_data,
-        )
-
+        employee = Employee.objects.create(user=user, **validated_data)
         return employee
-
+    
 class AttendanceSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
 

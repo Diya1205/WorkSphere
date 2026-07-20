@@ -68,9 +68,20 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         "department",
         "designation",
     )
+
     serializer_class = EmployeeSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if self.action == "list":
+            queryset = queryset.exclude(
+                role__in=Employee.NON_EMPLOYEE_ROLES
+            )
+
+        return queryset
 
 
 class AuthView(APIView):
@@ -405,7 +416,9 @@ class DashboardView(APIView):
     def _admin_payload(self):
         today = timezone.localdate()
 
-        employees = Employee.objects.select_related("department", "designation")
+        employees = Employee.objects.exclude(
+            role__in=Employee.NON_EMPLOYEE_ROLES
+        ).select_related("department", "designation")
         total_employees = employees.count()
         active_employees = employees.filter(status="ACTIVE").count()
 
