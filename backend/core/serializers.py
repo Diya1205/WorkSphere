@@ -14,6 +14,7 @@ from .models import (
     Conversation,          
     ConversationParticipant,  
     Message,
+    Notification,
 )
 
 
@@ -560,3 +561,29 @@ class ConversationCreateSerializer(serializers.Serializer):
                 )
 
         return attrs
+    
+class NotificationSerializer(serializers.ModelSerializer):
+
+    time_ago = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = [
+            "id",
+            "title",
+            "message",
+            "notification_type",
+            "reference_type",
+            "reference_id",
+            "action_url",
+            "is_read",
+            "created_at",
+            "time_ago",
+        ]
+
+        read_only_fields = fields
+
+    def get_time_ago(self, obj):
+        from django.utils.timesince import timesince
+
+        return f"{timesince(obj.created_at)} ago"

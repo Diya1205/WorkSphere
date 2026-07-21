@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useCurrentUser, type AppRole } from "@/hooks/use-current-user";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { NotificationBell } from "./NotificationBell";
 
 type Roles = AppRole[];
 interface NavItem {
@@ -201,10 +202,7 @@ export function AppLayout() {
             <button onClick={() => setDark((v) => !v)} className="grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Toggle theme">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <button className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-accent" aria-label="Notifications">
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-surface" />
-            </button>
+            <NotificationBell />
             <div className="relative ml-1" ref={menuRef}>
               <button
                 onClick={() => {

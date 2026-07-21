@@ -9,6 +9,7 @@ from .views import (
     EmployeeViewSet,
     LeaveViewSet,
     MessageDetailView,
+    NotificationViewSet,
     ProfileView,
     TaskViewSet,
     DashboardView,
@@ -26,7 +27,11 @@ router.register("employees", EmployeeViewSet)
 router.register("attendance", AttendanceViewSet, basename="attendance")
 router.register(r"tasks", TaskViewSet)
 router.register(r"leaves", LeaveViewSet, basename="leaves")
-
+router.register(
+    r"notifications",
+    NotificationViewSet,
+    basename="notifications",
+)
 urlpatterns = [
     path("auth/", AuthView.as_view(), name="auth"),
     path("", include(router.urls)),

@@ -1,4 +1,4 @@
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -17,6 +17,7 @@ from .models import (
     Conversation,
     ConversationParticipant,
     Message,
+    Notification,
 )
 from .serializers import (
     AttendanceSerializer,
@@ -31,11 +32,14 @@ from .serializers import (
     ConversationSerializer,
     ConversationCreateSerializer,
     MessageSerializer,
+    NotificationSerializer,
 )
 from django.conf import settings
 from geopy.distance import geodesic
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
+from .notifications_service import create_notification, notify_many
 
 def _validate_office_geofence(latitude, longitude):
     """
@@ -339,12 +343,22 @@ class TaskViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer.save(
+        task = serializer.save(
             assigned_by=request.user,
         )
 
+        if task.assigned_to.user:
+            create_notification(
+                recipient=task.assigned_to.user,
+                title="New Task Assigned",
+                message=f"You have been assigned '{task.title}'.",
+                notification_type=Notification.NotificationType.TASK,
+                reference=task,
+                action_url="/live/tasks",
+            )
+
         return Response(
-            serializer.data,
+            self.get_serializer(task).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -385,6 +399,22 @@ class TaskViewSet(viewsets.ModelViewSet):
         
         if updated_task.status == "COMPLETED":
             updated_task.completed_at = timezone.now()
+        
+            admin_users = _get_admin_users()
+        
+            notify_many(
+                recipients=admin_users,
+                title="Task Completed",
+                message=(
+                    f"{updated_task.assigned_to.first_name} "
+                    f"{updated_task.assigned_to.last_name} "
+                    f"completed '{updated_task.title}'."
+                ),
+                notification_type=Notification.NotificationType.TASK,
+                reference=updated_task,
+                action_url="/live/tasks",
+            )
+        
         else:
             updated_task.completed_at = None
         
@@ -555,6 +585,23 @@ def _is_admin(user):
         hasattr(user, "employee") and user.employee.role == "ADMIN"
     )
 
+def _get_admin_users():
+    """
+    Returns every user that should receive admin notifications.
+    """
+
+    admin_employee_user_ids = Employee.objects.filter(
+        role="ADMIN",
+        user__isnull=False,
+    ).values_list(
+        "user_id",
+        flat=True,
+    )
+
+    return User.objects.filter(
+        Q(is_superuser=True) |
+        Q(id__in=admin_employee_user_ids)
+    ).distinct()
 
 class LeaveViewSet(viewsets.ModelViewSet):
     serializer_class = LeaveSerializer
@@ -600,9 +647,29 @@ class LeaveViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer.save(employee=employee, status="PENDING")
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        leave = serializer.save(
+            employee=employee,
+            status="PENDING",
+        )
+        
+        admin_users = _get_admin_users()
+        
+        notify_many(
+            recipients=admin_users,
+            title="New Leave Request",
+            message=(
+                f"{employee.first_name} {employee.last_name} "
+                f"applied for {leave.leave_type.lower()} leave."
+            ),
+            notification_type=Notification.NotificationType.LEAVE,
+            reference=leave,
+            action_url="/leave",
+        )
+        
+        return Response(
+            self.get_serializer(leave).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     def update(self, request, *args, **kwargs):
         leave = self.get_object()
@@ -669,9 +736,33 @@ class LeaveViewSet(viewsets.ModelViewSet):
         leave.status = new_status
         leave.approved_by = request.user
         leave.approved_at = timezone.now()
-        leave.admin_remarks = decision_serializer.validated_data.get("admin_remarks", "")
-        leave.save(update_fields=["status", "approved_by", "approved_at", "admin_remarks"])
-
+        leave.admin_remarks = decision_serializer.validated_data.get(
+            "admin_remarks",
+            "",
+        )
+        
+        leave.save(
+            update_fields=[
+                "status",
+                "approved_by",
+                "approved_at",
+                "admin_remarks",
+            ]
+        )
+        
+        if leave.employee.user:
+            create_notification(
+                recipient=leave.employee.user,
+                title=f"Leave {new_status.title()}",
+                message=(
+                    f"Your {leave.leave_type.lower()} leave request "
+                    f"has been {new_status.lower()}."
+                ),
+                notification_type=Notification.NotificationType.LEAVE,
+                reference=leave,
+                action_url="/leave",
+            )
+        
         return Response(self.get_serializer(leave).data)
 
     @action(detail=True, methods=["post"])
@@ -929,17 +1020,50 @@ class ConversationMessagesView(APIView):
             )
 
         message = Message.objects.create(
-            conversation=conversation, sender=employee, message=text
+            conversation=conversation,
+            sender=employee,
+            message=text,
         )
-        conversation.save(update_fields=[])  # touches updated_at via auto_now
-        Conversation.objects.filter(pk=conversation.pk).update(updated_at=timezone.now())
-
+        
+        
+        other_participants = (
+            ConversationParticipant.objects
+            .filter(conversation=conversation)
+            .exclude(employee=employee)
+            .select_related("employee__user")
+        )
+        
+        for participant in other_participants:
+        
+            if participant.employee.user:
+            
+                create_notification(
+                    recipient=participant.employee.user,
+                    title="New Message",
+                    message=f"{employee.first_name} {employee.last_name}: {text[:80]}",
+                    notification_type=Notification.NotificationType.MESSAGE,
+                    reference=message,
+                    action_url="/messages",
+                )
+       
+        
+        conversation.save(update_fields=[])
+        
+        Conversation.objects.filter(
+            pk=conversation.pk
+        ).update(updated_at=timezone.now())
+        
         ConversationParticipant.objects.filter(
-            conversation=conversation, employee=employee
+            conversation=conversation,
+            employee=employee,
         ).update(last_read_at=timezone.now())
-
+        
         serializer = MessageSerializer(message)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class MessageDetailView(APIView):
@@ -1005,3 +1129,49 @@ class MessageDetailView(APIView):
         message.save(update_fields=["is_deleted", "updated_at"])
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NotificationViewSet(
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(
+            recipient=self.request.user,
+            is_read=False,
+        ).order_by("-created_at")
+
+    @action(detail=False, methods=["get"])
+    def unread_count(self, request):
+        return Response(
+            {
+                "count": self.get_queryset().filter(
+                    is_read=False
+                ).count()
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+
+        if not notification.is_read:
+            notification.is_read = True
+            notification.save(update_fields=["is_read"])
+
+        return Response(
+            NotificationSerializer(notification).data
+        )
+
+    @action(detail=False, methods=["post"])
+    def mark_all_read(self, request):
+        self.get_queryset().filter(
+            is_read=False
+        ).update(is_read=True)
+
+        return Response(
+            {"detail": "All notifications marked as read."}
+        )

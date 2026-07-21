@@ -464,3 +464,70 @@ class Message(models.Model):
     def __str__(self):
         preview = self.message[:30] if not self.is_deleted else "(deleted)"
         return f"{self.sender} @ {self.created_at:%Y-%m-%d %H:%M} — {preview}"
+
+class Notification(models.Model):
+
+    class NotificationType(models.TextChoices):
+        TASK = "TASK", "Task"
+        LEAVE = "LEAVE", "Leave"
+        ATTENDANCE = "ATTENDANCE", "Attendance"
+        MESSAGE = "MESSAGE", "Message"
+        GENERAL = "GENERAL", "General"
+        PAYROLL = "PAYROLL", "Payroll"
+
+    recipient = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+
+    title = models.CharField(max_length=200)
+
+    message = models.TextField()
+
+    notification_type = models.CharField(
+        max_length=20,
+        choices=NotificationType.choices,
+        default=NotificationType.GENERAL,
+    )
+
+    reference_type = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+    )
+
+    reference_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+    )
+
+    action_url = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+    )
+
+    is_read = models.BooleanField(
+        default=False,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "notifications"
+        ordering = ["-created_at"]
+
+        indexes = [
+            models.Index(fields=["recipient", "is_read"]),
+            models.Index(fields=["recipient", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.recipient} - {self.title}"
