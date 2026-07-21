@@ -14,11 +14,12 @@ import {
   User as UserIcon,
   Pencil,
   Trash2,
-  MoreVertical,
+  ArrowLeft,
 } from "lucide-react";
 import { PageHeader } from "@/components/hrms/PageHeader";
 import { Avatar } from "@/components/hrms/Avatar";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
   messageService,
@@ -58,6 +59,7 @@ function ConversationIcon({ type }: { type: Conversation["conversation_type"] })
 function MessagesPage() {
   const { data: me } = useCurrentUser();
   const qc = useQueryClient();
+  const isMobile = useIsMobile();
 
   const [search, setSearch] = useState("");
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -146,207 +148,255 @@ function MessagesPage() {
     sendMut.mutate(text);
   };
 
-  return (
+  const chatPanel = activeConversation && (
     <>
-      <PageHeader
-        title="Messages"
-        description="Direct messages, group chats and company-wide conversations"
-        breadcrumbs={[{ label: "Home" }, { label: "Messages" }]}
-        actions={
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        {isMobile && (
           <button
-            onClick={() => setShowNewConvo(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
+            onClick={() => setActiveId(null)}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent"
           >
-            <Plus className="h-4 w-4" />
-            New conversation
+            <ArrowLeft className="h-5 w-5" />
           </button>
-        }
-      />
-
-      <div className="mx-auto flex h-[calc(100vh-160px)] max-w-[1440px] gap-4 px-6 py-6 lg:px-8">
-        {/* Left panel */}
-        <div className="flex w-[320px] shrink-0 flex-col rounded-xl border border-border bg-surface">
-          <div className="border-b border-border p-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search conversations…"
-                className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
+        )}
+        <Avatar name={activeConversation.display_name} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold text-foreground">
+            {activeConversation.display_name}
           </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {convLoading ? (
-              <div className="grid place-items-center py-16 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            ) : filteredConversations.length === 0 ? (
-              <div className="py-16 text-center text-sm text-muted-foreground">
-                No conversations yet
-              </div>
-            ) : (
-              filteredConversations.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setActiveId(c.id)}
-                  className={cn(
-                    "flex w-full items-start gap-3 border-b border-border/60 px-3 py-3 text-left transition-colors hover:bg-accent/50",
-                    activeId === c.id && "bg-primary-soft",
-                  )}
-                >
-                  <div className="relative shrink-0">
-                    <Avatar name={c.display_name} size="md" />
-                    <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-surface text-muted-foreground">
-                      <ConversationIcon type={c.conversation_type} />
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-medium text-foreground">
-                        {c.display_name}
-                      </span>
-                      {c.last_message && (
-                        <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {timeAgo(c.last_message.created_at)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center justify-between gap-2">
-                      <span className="truncate text-xs text-muted-foreground">
-                        {c.last_message
-                          ? `${c.last_message.sender_name.split(" ")[0]}: ${c.last_message.message}`
-                          : "No messages yet"}
-                      </span>
-                      {c.unread_count > 0 && (
-                        <span className="grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                          {c.unread_count}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))
-            )}
+          <div className="truncate text-xs text-muted-foreground">
+            {activeConversation.participants.length} participant
+            {activeConversation.participants.length !== 1 ? "s" : ""}
           </div>
         </div>
+      </div>
 
-        {/* Right panel */}
-        <div className="flex flex-1 flex-col rounded-xl border border-border bg-surface">
-          {!activeConversation ? (
-            <div className="grid flex-1 place-items-center text-sm text-muted-foreground">
-              Select a conversation to start messaging
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-                <Avatar name={activeConversation.display_name} size="md" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold text-foreground">
-                    {activeConversation.display_name}
+      <div
+        ref={scrollRef}
+        className={cn("flex-1 space-y-3 overflow-y-auto overscroll-contain", isMobile ? "px-3 py-3" : "p-4")}
+      >
+        {messagesLoading ? (
+          <div className="grid place-items-center py-16 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        ) : (
+          messages.map((m) => {
+            const isMine = m.sender_id === me?.employeeId;
+            return (
+              <div
+                key={m.id}
+                className={cn("group flex items-end gap-2", isMine ? "flex-row-reverse" : "")}
+              >
+                {!isMine && <Avatar name={m.sender_name} size="sm" />}
+                <div className={cn(isMobile ? "max-w-[80%]" : "max-w-[65%]", isMine ? "items-end" : "items-start")}>
+                  {!isMine && (
+                    <div className="mb-0.5 px-1 text-[11px] font-medium text-muted-foreground">
+                      {m.sender_name}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1">
+                    {isMine && !m.is_deleted && (
+                      <div className="hidden items-center gap-1 group-hover:flex">
+                        <button
+                          onClick={() => {
+                            setEditingMessage(m);
+                            setEditDraft(m.message);
+                          }}
+                          className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-accent"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => deleteMut.mutate(m.id)}
+                          className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger-soft"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
+                        isMine
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-accent text-foreground",
+                        m.is_deleted && "italic opacity-60",
+                      )}
+                    >
+                      {m.message}
+                    </div>
                   </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {activeConversation.participants.length} participant
-                    {activeConversation.participants.length !== 1 ? "s" : ""}
+                  <div
+                    className={cn(
+                      "mt-0.5 px-1 text-[10px] text-muted-foreground",
+                      isMine ? "text-right" : "text-left",
+                    )}
+                  >
+                    {timeAgo(m.created_at)}
+                    {m.is_edited && !m.is_deleted && " · edited"}
                   </div>
                 </div>
               </div>
+            );
+          })
+        )}
+      </div>
 
-              <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-                {messagesLoading ? (
-                  <div className="grid place-items-center py-16 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                ) : (
-                  messages.map((m) => {
-                    const isMine = m.sender_id === me?.employeeId;
-                    return (
-                      <div
-                        key={m.id}
-                        className={cn("group flex items-end gap-2", isMine ? "flex-row-reverse" : "")}
-                      >
-                        {!isMine && <Avatar name={m.sender_name} size="sm" />}
-                        <div className={cn("max-w-[65%]", isMine ? "items-end" : "items-start")}>
-                          {!isMine && (
-                            <div className="mb-0.5 px-1 text-[11px] font-medium text-muted-foreground">
-                              {m.sender_name}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            {isMine && !m.is_deleted && (
-                              <div className="hidden items-center gap-1 group-hover:flex">
-                                <button
-                                  onClick={() => {
-                                    setEditingMessage(m);
-                                    setEditDraft(m.message);
-                                  }}
-                                  className="grid h-6 w-6 place-items-center rounded text-muted-foreground hover:bg-accent"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => deleteMut.mutate(m.id)}
-                                  className="grid h-6 w-6 place-items-center rounded text-danger hover:bg-danger-soft"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
-                            )}
-                            <div
-                              className={cn(
-                                "rounded-2xl px-3.5 py-2 text-sm",
-                                isMine
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-accent text-foreground",
-                                m.is_deleted && "italic opacity-60",
-                              )}
-                            >
-                              {m.message}
-                            </div>
-                          </div>
-                          <div
-                            className={cn(
-                              "mt-0.5 px-1 text-[10px] text-muted-foreground",
-                              isMine ? "text-right" : "text-left",
-                            )}
-                          >
-                            {timeAgo(m.created_at)}
-                            {m.is_edited && !m.is_deleted && " · edited"}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+      <div
+        className={cn(
+          "flex items-center gap-2 border-t border-border bg-surface p-3",
+          isMobile && "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+        )}
+      >
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
+          placeholder="Type a message…"
+          className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!draft.trim() || sendMut.isPending}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground hover:bg-primary-dark disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+    </>
+  );
 
-              <div className="flex items-center gap-2 border-t border-border p-3">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder="Type a message…"
-                  className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!draft.trim() || sendMut.isPending}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground hover:bg-primary-dark disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </>
-          )}
+  const conversationList = (
+    <>
+      <div className="border-b border-border p-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search conversations…"
+            className="h-10 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
         </div>
       </div>
+
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        {convLoading ? (
+          <div className="grid place-items-center py-16 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="py-16 text-center text-sm text-muted-foreground">
+            No conversations yet
+          </div>
+        ) : (
+          <div className={cn(isMobile && "space-y-1 p-2")}>
+            {filteredConversations.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setActiveId(c.id)}
+                className={cn(
+                  "flex w-full items-start gap-3 text-left transition-colors hover:bg-accent/50",
+                  isMobile
+                    ? "rounded-xl border border-transparent px-3 py-3.5 active:bg-accent/60"
+                    : "border-b border-border/60 px-3 py-3",
+                  activeId === c.id && !isMobile && "bg-primary-soft",
+                )}
+              >
+                <div className="relative shrink-0">
+                  <Avatar name={c.display_name} size={isMobile ? "lg" : "md"} />
+                  <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-surface text-muted-foreground">
+                    <ConversationIcon type={c.conversation_type} />
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {c.display_name}
+                    </span>
+                    {c.last_message && (
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {timeAgo(c.last_message.created_at)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <span className="truncate text-xs text-muted-foreground">
+                      {c.last_message
+                        ? `${c.last_message.sender_name.split(" ")[0]}: ${c.last_message.message}`
+                        : "No messages yet"}
+                    </span>
+                    {c.unread_count > 0 && (
+                      <span className="grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                        {c.unread_count}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* On mobile, once a chat is open it takes over the whole screen — no
+          point rendering the page chrome underneath a full-screen overlay. */}
+      {!(isMobile && activeConversation) && (
+        <PageHeader
+          title="Messages"
+          description="Direct messages, group chats and company-wide conversations"
+          breadcrumbs={[{ label: "Home" }, { label: "Messages" }]}
+          actions={
+            <button
+              onClick={() => setShowNewConvo(true)}
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
+            >
+              <Plus className="h-4 w-4" />
+              New conversation
+            </button>
+          }
+        />
+      )}
+
+      {isMobile ? (
+        activeConversation ? (
+          // Full-screen chat takeover — WhatsApp/Telegram style.
+          <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col bg-surface">
+            {chatPanel}
+          </div>
+        ) : (
+          <div className="mx-auto flex h-[calc(100dvh-160px)] max-w-[1440px] flex-col rounded-xl border border-border bg-surface px-0">
+            {conversationList}
+          </div>
+        )
+      ) : (
+        <div className="mx-auto flex h-[calc(100vh-160px)] max-w-[1440px] gap-4 px-6 py-6 lg:px-8">
+          {/* Left panel */}
+          <div className="flex w-[320px] shrink-0 flex-col rounded-xl border border-border bg-surface">
+            {conversationList}
+          </div>
+
+          {/* Right panel */}
+          <div className="flex flex-1 flex-col rounded-xl border border-border bg-surface">
+            {!activeConversation ? (
+              <div className="grid flex-1 place-items-center text-sm text-muted-foreground">
+                Select a conversation to start messaging
+              </div>
+            ) : (
+              chatPanel
+            )}
+          </div>
+        </div>
+      )}
 
       {showNewConvo && (
         <NewConversationDialog
@@ -361,7 +411,7 @@ function MessagesPage() {
       )}
 
       {editingMessage && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-[var(--shadow-elevated)]">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-base font-semibold">Edit message</h3>
@@ -378,7 +428,7 @@ function MessagesPage() {
               onChange={(e) => setEditDraft(e.target.value)}
               className="w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 onClick={() => setEditingMessage(null)}
                 className="h-9 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent"
@@ -437,8 +487,8 @@ function NewConversationDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 backdrop-blur-sm">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-border bg-surface shadow-[var(--shadow-elevated)]">
+    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/40 backdrop-blur-sm sm:place-items-center">
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-xl border border-border bg-surface shadow-[var(--shadow-elevated)] sm:rounded-xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="text-base font-semibold">New conversation</h3>
           <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent">
@@ -446,7 +496,7 @@ function NewConversationDialog({
           </button>
         </div>
 
-        <div className="flex gap-1 border-b border-border px-4 pt-3">
+        <div className="flex gap-1 overflow-x-auto border-b border-border px-4 pt-3">
           {(["INDIVIDUAL", "GROUP", "EVERYONE"] as const).map((t) => (
             <button
               key={t}
@@ -455,7 +505,7 @@ function NewConversationDialog({
                 setSelected([]);
               }}
               className={cn(
-                "rounded-t-md px-3 py-2 text-sm font-medium capitalize transition-colors",
+                "shrink-0 rounded-t-md px-3 py-2 text-sm font-medium capitalize transition-colors",
                 tab === t
                   ? "border-b-2 border-primary text-primary"
                   : "text-muted-foreground hover:text-foreground",
@@ -484,7 +534,7 @@ function NewConversationDialog({
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   placeholder="Group name (optional)"
-                  className="mb-3 h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  className="mb-3 h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 />
               )}
               <div className="relative mb-3">
@@ -493,7 +543,7 @@ function NewConversationDialog({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search people…"
-                  className="h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  className="h-10 w-full rounded-md border border-border bg-background pl-8 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 />
               </div>
 
@@ -512,7 +562,7 @@ function NewConversationDialog({
                           tab === "INDIVIDUAL" ? onCreateDirect(e.id) : toggle(e.id)
                         }
                         className={cn(
-                          "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-accent/50",
+                          "flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left hover:bg-accent/50",
                           isSelected && "bg-primary-soft",
                         )}
                       >
@@ -537,7 +587,7 @@ function NewConversationDialog({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+        <div className="flex flex-col-reverse gap-2 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
           <button
             onClick={onClose}
             className="h-9 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent"
