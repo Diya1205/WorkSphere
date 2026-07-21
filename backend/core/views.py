@@ -54,8 +54,55 @@ def _validate_office_geofence(latitude, longitude):
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        return Department.objects.annotate(
+            employee_count=Count(
+                "employees",
+                filter=~Q(employees__role__in=Employee.NON_EMPLOYEE_ROLES),
+            )
+        ).order_by("name")
+
+    def create(self, request, *args, **kwargs):
+        if not _is_admin(request.user):
+            return Response(
+                {"detail": "Only admins can create departments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not _is_admin(request.user):
+            return Response(
+                {"detail": "Only admins can edit departments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if not _is_admin(request.user):
+            return Response(
+                {"detail": "Only admins can edit departments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not _is_admin(request.user):
+            return Response(
+                {"detail": "Only admins can delete departments."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        department = self.get_object()
+        if department.employees.exists():
+            return Response(
+                {"detail": "This department still has employees assigned to it and cannot be deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
+    
 
 class DesignationViewSet(viewsets.ModelViewSet):
     queryset = Designation.objects.all()

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.utils import timezone
 from django.db import transaction
+import re
 from .models import (
     Attendance,
     Department,
@@ -17,9 +18,35 @@ from .models import (
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
+    # Populated by the view's annotate(); never trust a client-sent value.
+    employee_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Department
-        fields = "__all__"
+        fields = [
+            "id",
+            "name",
+            "description",
+            "is_active",
+            "employee_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ("created_at", "updated_at")
+
+    @staticmethod
+    def _generate_code(name):
+        base = re.sub(r"[^A-Za-z0-9]+", "_", name).strip("_").upper()[:16] or "DEPT"
+        code = base
+        suffix = 1
+        while Department.objects.filter(code=code).exists():
+            suffix += 1
+            code = f"{base}_{suffix}"[:20]
+        return code
+
+    def create(self, validated_data):
+        validated_data["code"] = self._generate_code(validated_data["name"])
+        return super().create(validated_data)
 
 
 class DesignationSerializer(serializers.ModelSerializer):
