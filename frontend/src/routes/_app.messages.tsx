@@ -182,7 +182,14 @@ function MessagesPage() {
           </div>
         </div>
       </div>
-
+        <div
+  style={{
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 0,
+  }}
+>
       <div
         ref={scrollRef}
         className={cn("flex-1 space-y-3 overflow-y-auto overscroll-contain", isMobile ? "px-3 py-3" : "p-4")}
@@ -279,6 +286,7 @@ function MessagesPage() {
         >
           <Send className="h-4 w-4" />
         </button>
+      </div>
       </div>
     </>
   );
@@ -403,14 +411,15 @@ function MessagesPage() {
         activeConversation ? (
           // Full-screen chat takeover — WhatsApp/Telegram style.
           <div
-              style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  width: "100%",
-                  height: "100%",
-                  background: "var(--surface)",
-              }}
-          >
+    style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 40,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--surface)",
+    }}
+>
             {chatPanel}
           </div>
         ) : (
@@ -540,7 +549,7 @@ function NewConversationDialog({
   return (
     <div
   style={{
-    position: "absolute",
+    position: "fixed",
     inset: 0,
     zIndex: 70,
     display: "flex",
