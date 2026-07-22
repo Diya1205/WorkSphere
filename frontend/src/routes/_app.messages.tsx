@@ -413,7 +413,10 @@ function MessagesPage() {
           <div
     style={{
         position: "fixed",
-        inset: 0,
+        top: "env(safe-area-inset-top)",
+        left: 0,
+        right: 0,
+        bottom: 0,
         zIndex: 40,
         display: "flex",
         flexDirection: "column",
