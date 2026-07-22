@@ -174,32 +174,31 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && isMobile && (
+      {open && (
   <>
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        background: "rgba(15,23,42,0.45)",
-        backdropFilter: "blur(6px)",
-      }}
-      onClick={() => setOpen(false)}
-      aria-hidden="true"
-    />
+    {isMobile ? (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 60,
+          background: "rgba(15,23,42,0.45)",
+          backdropFilter: "blur(6px)",
+        }}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+    ) : (
+      <button
+        className="fixed inset-0 z-40 cursor-default bg-transparent"
+        onClick={() => setOpen(false)}
+        aria-label="Close notifications"
+      />
+    )}
+
     {panel}
   </>
-)
-        : open && (
-            <>
-              <button
-                className="fixed inset-0 z-40 cursor-default bg-transparent"
-                onClick={() => setOpen(false)}
-                aria-label="Close notifications"
-              />
-              {panel}
-            </>
-          )}
+)}
     </div>
   );
 }
