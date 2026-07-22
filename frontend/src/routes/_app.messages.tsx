@@ -402,13 +402,27 @@ function MessagesPage() {
       {isMobile ? (
         activeConversation ? (
           // Full-screen chat takeover — WhatsApp/Telegram style.
-          <div className="fixed inset-0 z-40 flex h-[100dvh] flex-col bg-surface">
+          <div
+              style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  width: "100%",
+                  height: "100%",
+                  background: "var(--surface)",
+              }}
+          >
             {chatPanel}
           </div>
         ) : (
-          // Full-bleed list — no inset border/rounded card/centered max-width,
-          // so there's no wasted space around the list on small screens.
-          <div className="flex h-[calc(100dvh-57px)] flex-col bg-surface">
+          
+          <div
+              style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                  background: "var(--surface)",
+              }}
+          >
             {conversationList}
           </div>
         )
@@ -432,22 +446,18 @@ function MessagesPage() {
         </div>
       )}
 
-      {/* Portal-mounted: fixes the Android bug where the dim backdrop showed
-          but the dialog itself never painted (ancestor stacking context /
-          overflow clipping between MessagesPage and document.body). */}
+      
       {showNewConvo && (
-        <ModalPortal>
-          <NewConversationDialog
-            onClose={() => setShowNewConvo(false)}
-            onCreateDirect={(id) => createConvoMut.mutate({ type: "DIRECT", receiverId: id })}
-            onCreateGroup={(ids, name) =>
-              createConvoMut.mutate({ type: "GROUP", participantIds: ids, name })
-            }
-            onCreateEveryone={() => createConvoMut.mutate({ type: "EVERYONE" })}
-            submitting={createConvoMut.isPending}
-          />
-        </ModalPortal>
-      )}
+  <NewConversationDialog
+    onClose={() => setShowNewConvo(false)}
+    onCreateDirect={(id) => createConvoMut.mutate({ type: "DIRECT", receiverId: id })}
+    onCreateGroup={(ids, name) =>
+      createConvoMut.mutate({ type: "GROUP", participantIds: ids, name })
+    }
+    onCreateEveryone={() => createConvoMut.mutate({ type: "EVERYONE" })}
+    submitting={createConvoMut.isPending}
+  />
+)}
 
       {editingMessage && (
         <ModalPortal>
@@ -528,8 +538,31 @@ function NewConversationDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-end bg-foreground/40 backdrop-blur-sm sm:place-items-center">
-      <div className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-xl border border-border bg-surface shadow-[var(--shadow-elevated)] sm:rounded-xl">
+    <div
+  style={{
+    position: "absolute",
+    inset: 0,
+    zIndex: 70,
+    display: "flex",
+    alignItems: window.innerWidth < 640 ? "flex-end" : "center",
+    justifyContent: "center",
+    background: "rgba(0,0,0,0.45)",
+  }}
+>
+      <div
+  style={{
+    width: "100%",
+    maxWidth: 520,
+    maxHeight: "85%",
+    display: "flex",
+    flexDirection: "column",
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: window.innerWidth < 640 ? "16px 16px 0 0" : "16px",
+    overflow: "hidden",
+    boxShadow: "var(--shadow-elevated)",
+  }}
+>
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="text-base font-semibold">New conversation</h3>
           <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent">
