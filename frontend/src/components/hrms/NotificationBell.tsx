@@ -1,6 +1,5 @@
 import { Bell, CheckCheck, X, Info, CheckCircle2, AlertTriangle, MessageSquare, CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,11 +27,7 @@ export function NotificationBell() {
   const isMobile = useIsMobile();
 
   const [open, setOpen] = useState(false);
-  // Guards portal usage until we're mounted in the browser.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
 
-  // Lock background scroll while the mobile sheet is open, like a native sheet.
   useEffect(() => {
     if (!(isMobile && open)) return;
     const original = document.body.style.overflow;
@@ -60,10 +55,24 @@ export function NotificationBell() {
       className={cn(
         "flex flex-col border border-border bg-background shadow-xl",
         isMobile
-          ? "fixed inset-x-0 bottom-0 z-[70] max-h-[85dvh] rounded-t-2xl"
+          ? ""
           : "absolute right-0 mt-2 z-50 max-h-[480px] w-[380px] rounded-xl",
       )}
-      style={isMobile ? { paddingBottom: "env(safe-area-inset-bottom)" } : undefined}
+      style={
+  isMobile
+    ? {
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 70,
+        maxHeight: "80vh",
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+      }
+    : undefined
+}
       role="dialog"
       aria-label="Notifications"
     >
@@ -165,20 +174,22 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && isMobile && mounted
-        ? createPortal(
-            <>
-              {/* Real dimmed backdrop, mounted at document.body so no ancestor
-                  stacking context / overflow can clip or reflow the sheet. */}
-              <div
-                className="fixed inset-0 z-[60] bg-foreground/40 backdrop-blur-sm"
-                onClick={() => setOpen(false)}
-                aria-hidden="true"
-              />
-              {panel}
-            </>,
-            document.body,
-          )
+      {open && isMobile && (
+  <>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        background: "rgba(15,23,42,0.45)",
+        backdropFilter: "blur(6px)",
+      }}
+      onClick={() => setOpen(false)}
+      aria-hidden="true"
+    />
+    {panel}
+  </>
+)
         : open && (
             <>
               <button
