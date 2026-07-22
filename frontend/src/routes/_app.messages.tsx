@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -54,6 +55,17 @@ function ConversationIcon({ type }: { type: Conversation["conversation_type"] })
   if (type === "EVERYONE") return <Globe className="h-4 w-4" />;
   if (type === "GROUP") return <Users className="h-4 w-4" />;
   return <UserIcon className="h-4 w-4" />;
+}
+
+// Portal helper: mounts children directly under document.body so nothing in
+// the component tree (transformed/overflow-clipped/stacking-context
+// ancestors) can prevent the dialog from painting on top — this is what was
+// causing the "backdrop shows, dialog invisible" bug on Android.
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(children, document.body);
 }
 
 function MessagesPage() {
@@ -350,22 +362,42 @@ function MessagesPage() {
     <>
       {/* On mobile, once a chat is open it takes over the whole screen — no
           point rendering the page chrome underneath a full-screen overlay. */}
-      {!(isMobile && activeConversation) && (
-        <PageHeader
-          title="Messages"
-          description="Direct messages, group chats and company-wide conversations"
-          breadcrumbs={[{ label: "Home" }, { label: "Messages" }]}
-          actions={
-            <button
-              onClick={() => setShowNewConvo(true)}
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
-            >
-              <Plus className="h-4 w-4" />
-              New conversation
-            </button>
-          }
-        />
-      )}
+      {!(isMobile && activeConversation) &&
+        (isMobile ? (
+          // Compact, chat-app-style header for mobile — the generic
+          // PageHeader (breadcrumbs + text-2xl title + description) was the
+          // source of the "oversized header / wasted space" complaint.
+          // Desktop keeps the original PageHeader untouched below.
+          <div className="border-b border-border bg-surface px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+                Messages
+              </h1>
+              <button
+                onClick={() => setShowNewConvo(true)}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground hover:bg-primary-dark active:scale-[0.97]"
+              >
+                <Plus className="h-4 w-4" />
+                New
+              </button>
+            </div>
+          </div>
+        ) : (
+          <PageHeader
+            title="Messages"
+            description="Direct messages, group chats and company-wide conversations"
+            breadcrumbs={[{ label: "Home" }, { label: "Messages" }]}
+            actions={
+              <button
+                onClick={() => setShowNewConvo(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark"
+              >
+                <Plus className="h-4 w-4" />
+                New conversation
+              </button>
+            }
+          />
+        ))}
 
       {isMobile ? (
         activeConversation ? (
@@ -374,7 +406,9 @@ function MessagesPage() {
             {chatPanel}
           </div>
         ) : (
-          <div className="mx-auto flex h-[calc(100dvh-160px)] max-w-[1440px] flex-col rounded-xl border border-border bg-surface px-0">
+          // Full-bleed list — no inset border/rounded card/centered max-width,
+          // so there's no wasted space around the list on small screens.
+          <div className="flex h-[calc(100dvh-57px)] flex-col bg-surface">
             {conversationList}
           </div>
         )
@@ -398,55 +432,62 @@ function MessagesPage() {
         </div>
       )}
 
+      {/* Portal-mounted: fixes the Android bug where the dim backdrop showed
+          but the dialog itself never painted (ancestor stacking context /
+          overflow clipping between MessagesPage and document.body). */}
       {showNewConvo && (
-        <NewConversationDialog
-          onClose={() => setShowNewConvo(false)}
-          onCreateDirect={(id) => createConvoMut.mutate({ type: "DIRECT", receiverId: id })}
-          onCreateGroup={(ids, name) =>
-            createConvoMut.mutate({ type: "GROUP", participantIds: ids, name })
-          }
-          onCreateEveryone={() => createConvoMut.mutate({ type: "EVERYONE" })}
-          submitting={createConvoMut.isPending}
-        />
+        <ModalPortal>
+          <NewConversationDialog
+            onClose={() => setShowNewConvo(false)}
+            onCreateDirect={(id) => createConvoMut.mutate({ type: "DIRECT", receiverId: id })}
+            onCreateGroup={(ids, name) =>
+              createConvoMut.mutate({ type: "GROUP", participantIds: ids, name })
+            }
+            onCreateEveryone={() => createConvoMut.mutate({ type: "EVERYONE" })}
+            submitting={createConvoMut.isPending}
+          />
+        </ModalPortal>
       )}
 
       {editingMessage && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-[var(--shadow-elevated)]">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-base font-semibold">Edit message</h3>
-              <button
-                onClick={() => setEditingMessage(null)}
-                className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <textarea
-              rows={3}
-              value={editDraft}
-              onChange={(e) => setEditDraft(e.target.value)}
-              className="w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-            />
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                onClick={() => setEditingMessage(null)}
-                className="h-9 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  editingMessage && editMut.mutate({ id: editingMessage.id, text: editDraft.trim() })
-                }
-                disabled={!editDraft.trim() || editMut.isPending}
-                className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-dark disabled:opacity-60"
-              >
-                {editMut.isPending ? "Saving…" : "Save changes"}
-              </button>
+        <ModalPortal>
+          <div className="fixed inset-0 z-[70] grid place-items-center bg-foreground/40 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-xl border border-border bg-surface p-5 shadow-[var(--shadow-elevated)]">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-base font-semibold">Edit message</h3>
+                <button
+                  onClick={() => setEditingMessage(null)}
+                  className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <textarea
+                rows={3}
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+                className="w-full rounded-md border border-border bg-background p-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+              <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  onClick={() => setEditingMessage(null)}
+                  className="h-9 rounded-md border border-border bg-surface px-4 text-sm font-medium hover:bg-accent"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() =>
+                    editingMessage && editMut.mutate({ id: editingMessage.id, text: editDraft.trim() })
+                  }
+                  disabled={!editDraft.trim() || editMut.isPending}
+                  className="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary-dark disabled:opacity-60"
+                >
+                  {editMut.isPending ? "Saving…" : "Save changes"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );
@@ -487,8 +528,8 @@ function NewConversationDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-foreground/40 backdrop-blur-sm sm:place-items-center">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-xl border border-border bg-surface shadow-[var(--shadow-elevated)] sm:rounded-xl">
+    <div className="fixed inset-0 z-[70] grid place-items-end bg-foreground/40 backdrop-blur-sm sm:place-items-center">
+      <div className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-xl border border-border bg-surface shadow-[var(--shadow-elevated)] sm:rounded-xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="text-base font-semibold">New conversation</h3>
           <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent">
