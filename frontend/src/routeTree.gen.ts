@@ -21,6 +21,7 @@ import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppPerformanceRouteImport } from './routes/_app.performance'
 import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
+import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
 import { Route as AppLeaveRouteImport } from './routes/_app.leave'
@@ -95,6 +96,11 @@ const AppPerformanceRoute = AppPerformanceRouteImport.update({
 const AppPayrollRoute = AppPayrollRouteImport.update({
   id: '/payroll',
   path: '/payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesRoute = AppMessagesRouteImport.update({
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/leave': typeof AppLeaveRoute
   '/meetings': typeof AppMeetingsRoute
   '/messages': typeof AppMessagesRoute
+  '/notifications': typeof AppNotificationsRoute
   '/payroll': typeof AppPayrollRoute
   '/performance': typeof AppPerformanceRoute
   '/profile': typeof AppProfileRoute
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/leave': typeof AppLeaveRoute
   '/meetings': typeof AppMeetingsRoute
   '/messages': typeof AppMessagesRoute
+  '/notifications': typeof AppNotificationsRoute
   '/payroll': typeof AppPayrollRoute
   '/performance': typeof AppPerformanceRoute
   '/profile': typeof AppProfileRoute
@@ -249,6 +257,7 @@ export interface FileRoutesById {
   '/_app/leave': typeof AppLeaveRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/messages': typeof AppMessagesRoute
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/payroll': typeof AppPayrollRoute
   '/_app/performance': typeof AppPerformanceRoute
   '/_app/profile': typeof AppProfileRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/leave'
     | '/meetings'
     | '/messages'
+    | '/notifications'
     | '/payroll'
     | '/performance'
     | '/profile'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/leave'
     | '/meetings'
     | '/messages'
+    | '/notifications'
     | '/payroll'
     | '/performance'
     | '/profile'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/_app/leave'
     | '/_app/meetings'
     | '/_app/messages'
+    | '/_app/notifications'
     | '/_app/payroll'
     | '/_app/performance'
     | '/_app/profile'
@@ -445,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/payroll'
       fullPath: '/payroll'
       preLoaderRoute: typeof AppPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages': {
@@ -599,6 +618,7 @@ interface AppRouteChildren {
   AppLeaveRoute: typeof AppLeaveRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppMessagesRoute: typeof AppMessagesRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppPayrollRoute: typeof AppPayrollRoute
   AppPerformanceRoute: typeof AppPerformanceRoute
   AppProfileRoute: typeof AppProfileRoute
@@ -625,6 +645,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLeaveRoute: AppLeaveRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppMessagesRoute: AppMessagesRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppPayrollRoute: AppPayrollRoute,
   AppPerformanceRoute: AppPerformanceRoute,
   AppProfileRoute: AppProfileRoute,

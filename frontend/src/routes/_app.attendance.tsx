@@ -57,7 +57,8 @@ function toLocalISODate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 async function getCurrentPosition() {
-
+  console.log("Capacitor platform:", Capacitor.getPlatform());
+  console.log("Is Native:", Capacitor.isNativePlatform());
   if (Capacitor.isNativePlatform()) {
 
     const permission = await Geolocation.requestPermissions();

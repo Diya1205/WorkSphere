@@ -1,6 +1,6 @@
 import { Bell, CheckCheck, X, Info, CheckCircle2, AlertTriangle, MessageSquare, CalendarClock } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -23,19 +23,15 @@ function NotificationTypeIcon({ type }: { type: string }) {
 }
 
 export function NotificationBell() {
+  
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-
+  const pathname = useRouterState({
+  select: (state) => state.location.pathname,
+});
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!(isMobile && open)) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [isMobile, open]);
+  
 
   const { data: notifications = [] } = useNotifications();
   const { data: unread = 0 } = useUnreadNotificationCount();
@@ -58,21 +54,7 @@ export function NotificationBell() {
           ? ""
           : "absolute right-0 mt-2 z-50 max-h-[480px] w-[380px] rounded-xl",
       )}
-      style={
-  isMobile
-    ? {
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 70,
-        maxHeight: "80vh",
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-      }
-    : undefined
-}
+      
       role="dialog"
       aria-label="Notifications"
     >
@@ -162,7 +144,17 @@ export function NotificationBell() {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+  if (pathname === "/notifications") {
+    return;
+  }
+
+  if (isMobile) {
+    navigate({ to: "/notifications" });
+  } else {
+    setOpen((prev) => !prev);
+  }
+}}
         className="relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground hover:bg-accent"
       >
         <Bell className="h-4 w-4" />
@@ -174,27 +166,13 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
+      {open && !isMobile && pathname !== "/notifications" && (
   <>
-    {isMobile ? (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 60,
-          background: "rgba(15,23,42,0.45)",
-          backdropFilter: "blur(6px)",
-        }}
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-      />
-    ) : (
-      <button
-        className="fixed inset-0 z-40 cursor-default bg-transparent"
-        onClick={() => setOpen(false)}
-        aria-label="Close notifications"
-      />
-    )}
+    <button
+      className="fixed inset-0 z-40 cursor-default bg-transparent"
+      onClick={() => setOpen(false)}
+      aria-label="Close notifications"
+    />
 
     {panel}
   </>

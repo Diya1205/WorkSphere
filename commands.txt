@@ -25,13 +25,14 @@ D:\WorkSphere>git status
 git add .
 git commit -m "Redesign live task page for Android WebView testing"
 git push origin main
-
-
+ 
+to add any specifc file :
+git add frontend/src/routes/_app.messages.tsx
 
 Final deployment checklist
 
 Local
-
+git status
 git add .
 git commit -m "Your commit message"
 git push origin main
@@ -53,3 +54,12 @@ npm run build
 sudo systemctl restart worksphere-frontend
 
 sudo systemctl restart nginx
+
+backend:
+
+cd ~/WorkSphere/backend
+source venv/bin/activate
+python manage.py makemigrations
+python manage.py migrate
+sudo systemctl restart gunicorn
+sudo systemctl status gunicorn
