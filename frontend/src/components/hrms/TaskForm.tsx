@@ -138,6 +138,7 @@ export function TaskForm({
   const [status, setStatus] = useState(task?.status ?? "TODO");
   const [startDate, setStartDate] = useState(task?.start_date ?? "");
   const [dueDate, setDueDate] = useState<string>(task?.due_date ?? "");
+  const today = new Date().toISOString().split("T")[0];
   const [employeeRemarks, setEmployeeRemarks] = useState(
     task?.employee_remarks ?? ""
   );
@@ -371,7 +372,16 @@ export function TaskForm({
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              min={today}
+              onChange={(e) => {
+                const value = e.target.value;
+                setStartDate(value);
+              
+                // If due date is before the selected start date, clear it
+                if (dueDate && value && dueDate < value) {
+                  setDueDate("");
+                }
+              }}
               disabled={isEdit && !isAdmin}
               style={inputStyle}
             />
@@ -386,6 +396,7 @@ export function TaskForm({
               type="date"
               required
               value={dueDate}
+              min={startDate || today}
               onChange={(e) => setDueDate(e.target.value)}
               style={inputStyle}
             />
